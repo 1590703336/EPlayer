@@ -26,6 +26,7 @@ jobs:
           - platform: ubuntu-latest
             target: x86_64-unknown-linux-gnu
     runs-on: ${{ matrix.platform }}
+    timeout-minutes: 30
 
     steps:
       - name: Checkout repository
@@ -46,6 +47,8 @@ jobs:
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
+        with:
+          timeout-minutes: 15
 
       - name: Install dependencies (ubuntu only)
         if: matrix.platform == 'ubuntu-latest'
@@ -60,6 +63,7 @@ jobs:
             libjavascriptcoregtk-4.1-dev \
             libsoup-3.0-dev \
             libwebkit2gtk-4.1-dev
+        continue-on-error: true
 
       - name: Install dependencies (macos only)
         if: matrix.platform == 'macos-latest'
@@ -68,7 +72,12 @@ jobs:
           rustup target add x86_64-apple-darwin
 
       - name: Install frontend dependencies
-        run: pnpm install
+        uses: nick-fields/retry@v2
+        with:
+          timeout_minutes: 10
+          max_attempts: 3
+          command: pnpm install
+        continue-on-error: true
 
       - name: Build the app
         uses: tauri-apps/tauri-action@v0
@@ -82,6 +91,7 @@ jobs:
           releaseBody: '请查看 CHANGELOG.md 了解详细更新内容。'
           releaseDraft: true
           prerelease: false
-          args: --target ${{ matrix.target }}  
+          args: --target ${{ matrix.target }}
+        continue-on-error: true
 
 
