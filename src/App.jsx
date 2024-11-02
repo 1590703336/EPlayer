@@ -21,6 +21,7 @@ function App() {
   const [updateInfo, setUpdateInfo] = useState(null); // 用于存储更新信息
   const [isModalOpen, setIsModalOpen] = useState(false); // 用于存储更新弹窗的状态
 
+  
   // 处理字幕文件上传
   function handleSubtitleUpload(event) {
     const file = event.target.files[0]; // 获取文件对象
