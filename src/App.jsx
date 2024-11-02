@@ -193,20 +193,6 @@ function App() {
         <i className="fas fa-home"></i>
       </div>
       <div className="main-content">
-      <div>
-      <iframe
-        ref={iframeRef}
-        src="https://www.bilibili.com/video/BV189S4YxErk?t=2.0"
-        scrolling="no"
-        border="0"
-        frameBorder="no"
-        framespacing="0"
-        allowFullScreen={true}
-        width="100%"
-        height="600"
-      ></iframe>
-      <button onClick={() => seekTo(60)}>跳转到1分钟</button>
-    </div>
         <div className="player-wrapper">
           <ReactPlayer
             ref={playerRef} // 绑定 playerRef 以控制播放器
