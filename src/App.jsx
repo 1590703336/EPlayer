@@ -18,8 +18,7 @@ function App() {
   const [isLocalVideo, setIsLocalVideo] = useState(false); // 用于存储是否为本地视频的状态
   const [isNetworkVideo, setIsNetworkVideo] = useState(false); // 用于存储是否为网络视频的状态
   const [isRepeating, setIsRepeating] = useState(false); // 用于存储是否重复播放当前字幕
-  const [updateInfo, setUpdateInfo] = useState(null); // 用于存储更新信息
-  const [isModalOpen, setIsModalOpen] = useState(false); // 用于存储更新弹窗的状态
+
 
   
   // 处理字幕文件上传
