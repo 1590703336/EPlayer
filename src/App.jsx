@@ -139,7 +139,7 @@ function App() {
     setIsLocalVideo(false); // 标记不是本地视频
 
     // 调用获取字幕的函数
-    // await fetchSubtitles(networkVideoUrl);
+    await fetchSubtitles(networkVideoUrl);
   };
 
   // 获取字幕的函数
