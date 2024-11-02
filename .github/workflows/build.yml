@@ -93,10 +93,22 @@ jobs:
           if [ "${{ matrix.platform }}" = "windows-latest" ]; then
             # 只保留 X.Y.Z 格式，移除所有预发布标识符
             RELEASE_VERSION=$(echo $VERSION | sed -E 's/([0-9]+\.[0-9]+\.[0-9]+).*/\1/')
+            # 创建临时配置文件
+            cp src-tauri/tauri.conf.json src-tauri/tauri.conf.json.tmp
+            sed -i.bak "s/\"version\": \".*\"/\"version\": \"$RELEASE_VERSION\"/" src-tauri/tauri.conf.json.tmp
+            # 使用临时配置文件
+            mv src-tauri/tauri.conf.json.tmp src-tauri/tauri.conf.json
           else
             RELEASE_VERSION=$VERSION
           fi
           echo "version=$RELEASE_VERSION" >> $GITHUB_OUTPUT
+
+      # 构建完成后恢复原始配置文件（如果是 Windows 平台）
+      - name: Restore original config
+        if: matrix.platform == 'windows-latest'
+        shell: bash
+        run: |
+          mv src-tauri/tauri.conf.json.bak src-tauri/tauri.conf.json
 
       - name: Build the app
         uses: tauri-apps/tauri-action@v0
