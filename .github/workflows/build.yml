@@ -89,26 +89,9 @@ jobs:
         run: |
           # 从 tauri.conf.json 读取版本号
           VERSION=$(cat src-tauri/tauri.conf.json | grep '"version"' | cut -d'"' -f4)
-          # Windows 平台需要特殊处理版本号
-          if [ "${{ matrix.platform }}" = "windows-latest" ]; then
-            # 只保留 X.Y.Z 格式，移除所有预发布标识符
-            RELEASE_VERSION=$(echo $VERSION | sed -E 's/([0-9]+\.[0-9]+\.[0-9]+).*/\1/')
-            # 创建临时配置文件
-            cp src-tauri/tauri.conf.json src-tauri/tauri.conf.json.tmp
-            sed -i.bak "s/\"version\": \".*\"/\"version\": \"$RELEASE_VERSION\"/" src-tauri/tauri.conf.json.tmp
-            # 使用临时配置文件
-            mv src-tauri/tauri.conf.json.tmp src-tauri/tauri.conf.json
-          else
-            RELEASE_VERSION=$VERSION
-          fi
+          # 只保留 X.Y.Z 格式，移除所有预发布标识符
+          RELEASE_VERSION=$(echo $VERSION | sed -E 's/([0-9]+\.[0-9]+\.[0-9]+).*/\1/')
           echo "version=$RELEASE_VERSION" >> $GITHUB_OUTPUT
-
-      # 构建完成后恢复原始配置文件（如果是 Windows 平台）
-      - name: Restore original config
-        if: matrix.platform == 'windows-latest'
-        shell: bash
-        run: |
-          mv src-tauri/tauri.conf.json.bak src-tauri/tauri.conf.json
 
       - name: Build the app
         uses: tauri-apps/tauri-action@v0
@@ -118,11 +101,9 @@ jobs:
           TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
         with:
           tagName: v__VERSION__  # 保持原始版本号
-          releaseName: 'EPlayer ${{ steps.version_info.outputs.version }}'  # 使用处理后的版本号
+          releaseName: 'EPlayer ${{ steps.version_info.outputs.version }}'  # 使用纯数字版本号
           releaseBody: '请查看 CHANGELOG.md 了解详细更新内容。'
           releaseDraft: false
           prerelease: false
           args: --target ${{ matrix.target }}
         continue-on-error: true
-
-
