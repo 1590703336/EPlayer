@@ -128,6 +128,7 @@ function App() {
     }
   }, [currentTime, subtitles]); // 依赖于当前播放时间的变化
 
+  
   // 获取当前活跃的字幕文本
   const activeSubtitle = subtitles[currentSubtitleIndex-1]?.text || '';
 
