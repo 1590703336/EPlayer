@@ -83,16 +83,6 @@ jobs:
           command: pnpm install
         continue-on-error: true
 
-      - name: Get version info
-        id: version_info
-        shell: bash
-        run: |
-          # 从 tauri.conf.json 读取版本号
-          VERSION=$(cat src-tauri/tauri.conf.json | grep '"version"' | cut -d'"' -f4)
-          # 只保留 X.Y.Z 格式，移除所有预发布标识符
-          RELEASE_VERSION=$(echo $VERSION | sed -E 's/([0-9]+\.[0-9]+\.[0-9]+).*/\1/')
-          echo "version=$RELEASE_VERSION" >> $GITHUB_OUTPUT
-
       - name: Build the app
         uses: tauri-apps/tauri-action@v0
         env:
@@ -101,7 +91,7 @@ jobs:
           TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
         with:
           tagName: v__VERSION__  # 保持原始版本号
-          releaseName: 'EPlayer ${{ steps.version_info.outputs.version }}'  # 使用纯数字版本号
+          releaseName: 'EPlayer v__VERSION__'
           releaseBody: '请查看 CHANGELOG.md 了解详细更新内容。'
           releaseDraft: false
           prerelease: false
