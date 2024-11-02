@@ -129,7 +129,7 @@ function App() {
   }, [currentTime, subtitles]); // 依赖于当前播放时间的变化
 
   // 获取当前活跃的字幕文本
-  const activeSubtitle = subtitles[currentSubtitleIndex]?.text || '';
+  const activeSubtitle = subtitles[currentSubtitleIndex-1]?.text || '';
 
   // 处理网络视频链接输入
   const handleNetworkVideoSubmit = async (e) => {
@@ -270,15 +270,7 @@ function App() {
           );
         })}
       </div>
-
-      {/* 更新弹窗 */}
-      {updateInfo && (
-        <Modal isOpen={isModalOpen} onRequestClose={() => setIsModalOpen(false)}>
-          <h2>有新版本可用</h2>
-          <p>{updateInfo.release_notes}</p>
-          <button onClick={handleDownloadUpdate}>立即下载更新</button>
-        </Modal>
-      )}
+      
     </main>
   );
 }
