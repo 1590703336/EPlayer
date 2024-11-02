@@ -80,7 +80,7 @@ async fn get_transcript(video: String) -> Vec<Subtitle> {
         .collect();    
 
     // 检查如果前两条字幕的开始时间相同，则属于自动生成字幕，需要合并字幕
-    if subtitles.len() >= 5 && subtitles[..5].windows(2).any(|w| w[0].startSeconds == w[1].startSeconds) {
+    if subtitles.len() >= 10 && subtitles[..10].windows(2).any(|w| w[0].startSeconds == w[1].startSeconds || w[0].endSeconds == w[1].endSeconds) {
         // 处理包含换行符的字幕
         let mut merged_subtitles = Vec::new();
         let mut current_text = String::new();
