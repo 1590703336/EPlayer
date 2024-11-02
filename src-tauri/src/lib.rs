@@ -7,7 +7,7 @@ use youtube_captions::format::Format;
 use youtube_captions::language_tags::LanguageTag;
 use youtube_captions::{CaptionScraper, Digest, DigestScraper};
 
-const LANGUAGES: [&'static str; 6] = ["en", "zh-TW", "ja", "zh-Hant", "ko", "zh"];
+const LANGUAGES: [&'static str; 8] = ["en", "zh-TW", "ja", "zh-Hant", "ko", "zh", "es", "fr"];  //英语、繁体中文、日语、韩语、简体中文、西班牙语、法语
 
 #[derive(Deserialize)]
 struct Transcript {
@@ -116,6 +116,17 @@ async fn get_transcript(video: String) -> Vec<Subtitle> {
         merged_subtitles.iter_mut().for_each(|s| {
             s.text = s.text.replace('\n', " ");
         });
+
+        // 输出合并后的字幕
+        println!("\n合并后的字幕：");
+        for subtitle in &merged_subtitles {
+            println!("ID: {}, Time: {}-{}, Text: {}", 
+                subtitle.id,
+                subtitle.startSeconds,
+                subtitle.endSeconds,
+                subtitle.text
+            );
+        }
 
         merged_subtitles
     } else {

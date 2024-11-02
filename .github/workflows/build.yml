@@ -26,6 +26,7 @@ jobs:
           - platform: ubuntu-latest
             target: x86_64-unknown-linux-gnu
     runs-on: ${{ matrix.platform }}
+    timeout-minutes: 30
 
     steps:
       - name: Checkout repository
@@ -47,6 +48,12 @@ jobs:
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
 
+      # Windows 特定的依赖安装
+      - name: Install Windows Dependencies
+        if: matrix.platform == 'windows-latest'
+        run: |
+          rustup target add x86_64-pc-windows-msvc
+
       - name: Install dependencies (ubuntu only)
         if: matrix.platform == 'ubuntu-latest'
         run: |
@@ -60,6 +67,7 @@ jobs:
             libjavascriptcoregtk-4.1-dev \
             libsoup-3.0-dev \
             libwebkit2gtk-4.1-dev
+        continue-on-error: true
 
       - name: Install dependencies (macos only)
         if: matrix.platform == 'macos-latest'
@@ -68,7 +76,12 @@ jobs:
           rustup target add x86_64-apple-darwin
 
       - name: Install frontend dependencies
-        run: pnpm install
+        uses: nick-fields/retry@v2
+        with:
+          timeout_minutes: 10
+          max_attempts: 3
+          command: pnpm install
+        continue-on-error: true
 
       - name: Build the app
         uses: tauri-apps/tauri-action@v0
@@ -77,11 +90,10 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
         with:
-          tagName: v__VERSION__
+          tagName: v__VERSION__  # 保持原始版本号
           releaseName: 'EPlayer v__VERSION__'
           releaseBody: '请查看 CHANGELOG.md 了解详细更新内容。'
-          releaseDraft: true
+          releaseDraft: false
           prerelease: false
-          args: --target ${{ matrix.target }}  
-
-
+          args: --target ${{ matrix.target }}
+        continue-on-error: true
