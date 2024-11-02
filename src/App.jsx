@@ -157,7 +157,7 @@ function App() {
     if (url.includes('youtu.be')) {
       const pathname = new URL(url).pathname;
       return pathname.slice(1); // 移除开头的斜杠
-    }
+    } 
 
     // 处理标准格式 youtube.com/watch?v=
     const urlParams = new URLSearchParams(new URL(url).search);
