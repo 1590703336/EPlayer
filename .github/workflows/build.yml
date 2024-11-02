@@ -83,17 +83,19 @@ jobs:
           command: pnpm install
         continue-on-error: true
 
-      - name: Get clean version
-        id: clean_version
+      - name: Get version info
+        id: version_info
         shell: bash
         run: |
           # 从 tauri.conf.json 读取版本号
           VERSION=$(cat src-tauri/tauri.conf.json | grep '"version"' | cut -d'"' -f4)
-          # 删除所有非数字和非点的字符
-          CLEAN_VERSION=$(echo $VERSION | sed 's/[^0-9.]//g')
-          echo "version=$CLEAN_VERSION" >> $GITHUB_OUTPUT
-          echo "Original version: $VERSION"
-          echo "Clean version: $CLEAN_VERSION"
+          # 如果是 Windows 平台，只保留数字部分
+          if [ "${{ matrix.platform }}" = "windows-latest" ]; then
+            RELEASE_VERSION=$(echo $VERSION | cut -d'-' -f1)
+          else
+            RELEASE_VERSION=$VERSION
+          fi
+          echo "version=$RELEASE_VERSION" >> $GITHUB_OUTPUT
 
       - name: Build the app
         uses: tauri-apps/tauri-action@v0
@@ -103,7 +105,7 @@ jobs:
           TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
         with:
           tagName: v__VERSION__  # 保持原始版本号
-          releaseName: 'EPlayer ${{ steps.clean_version.outputs.version }}'  # 使用清理后的版本号
+          releaseName: 'EPlayer ${{ steps.version_info.outputs.version }}'  # 使用处理后的版本号
           releaseBody: '请查看 CHANGELOG.md 了解详细更新内容。'
           releaseDraft: false
           prerelease: false
