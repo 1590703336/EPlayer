@@ -121,6 +121,8 @@ function App() {
       } else if (event.key === 'ArrowDown') {
         // 降低播放速度
         setPlaybackRate((prevRate) => Math.max(prevRate - 0.1, 0.5)); // 最小速度限制0.5
+      } else if (event.key.toLowerCase() === 'h') {  // 添加对 h 键的支持
+        setShowGuide(prev => !prev);  // 切换 guide 显示状态
       }
     };
 
@@ -303,7 +305,7 @@ function App() {
                     type="text"
                     value={networkVideoUrl}
                     onChange={(e) => setNetworkVideoUrl(e.target.value)}
-                    placeholder="Enter the video link" // 提示用户输入网络视频链接
+                    placeholder="Enter YouTube link" // 提示用户输入网络视频链接
                   />
                   <button type="submit">Load</button>   {/* 注释：加载网络视频 */}
                 </form>
