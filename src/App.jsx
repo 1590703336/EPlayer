@@ -26,6 +26,8 @@ function App() {
   const [showAboutMenu, setShowAboutMenu] = useState(false); // 添加状态控制菜单显示
   const [appVersion, setAppVersion] = useState('');
   const [showGuide, setShowGuide] = useState(false);
+  const [prompt, setPrompt] = useState("");
+  const [response, setResponse] = useState("");
 
   // 获取应用版本号
   useEffect(() => {
@@ -91,7 +93,7 @@ function App() {
         await relaunch();
       }
     };
-    
+
     checkUpdate();
   }, []);
 
@@ -156,9 +158,9 @@ function App() {
     }
   }, [currentTime, subtitles]); // 依赖于当前播放时间的变化
 
-  
+
   // 获取当前活跃的字幕文本
-  const activeSubtitle = subtitles[currentSubtitleIndex-1]?.text || '';
+  const activeSubtitle = subtitles[currentSubtitleIndex - 1]?.text || '';
 
   // 处理网络视频链接输入
   const handleNetworkVideoSubmit = async (e) => {
@@ -214,7 +216,7 @@ function App() {
     setCurrentTime(0); // 重置当前播放时间
     setCurrentSubtitleIndex(0); // 重置当前字幕索引
     setPlaybackRate(1); // 重置播放速度
-  };  
+  };
 
   // 修改处理"关于"点击的函数
   const handleAboutClick = () => {
@@ -236,6 +238,16 @@ function App() {
   // 添加关闭 Guide 的函数
   const handleCloseGuide = () => {
     setShowGuide(false);
+  };
+
+  const handleOpenAICommunication = async () => {
+    try {
+      const result = await invoke("communicate_with_openai", { prompt });
+      setResponse(result);
+      console.log(result);
+    } catch (error) {
+      console.error("Error communicating with OpenAI:", error);
+    }
   };
 
   return (
@@ -297,6 +309,27 @@ function App() {
         </div>
         <div style={{ display: 'flex', justifyContent: 'left' }}>
           <div>
+            <input
+              type="text"
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+            />
+            <button onClick={handleOpenAICommunication}>发送</button>
+            <div style={{ marginTop: '10px' }}>
+              <textarea 
+                value={response}
+                readOnly
+                style={{
+                  width: '100%',
+                  minHeight: '100px',
+                  padding: '8px',
+                  resize: 'vertical'
+                }}
+                placeholder="OpenAI 回复将显示在这里..."
+              />
+            </div>
+          </div>
+          <div>
             {/* 当既不是本地视频也不是网络视频时，显示视频输入选项 */}
             {!isLocalVideo && !isNetworkVideo && (
               <>
@@ -353,7 +386,7 @@ function App() {
           );
         })}
       </div>
-      
+
     </main>
   );
 }

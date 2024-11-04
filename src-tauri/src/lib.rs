@@ -6,6 +6,9 @@ use tauri_plugin_log::{Target, TargetKind};
 use youtube_captions::format::Format;
 use youtube_captions::language_tags::LanguageTag;
 use youtube_captions::{CaptionScraper, Digest, DigestScraper};
+use openai_api_rust::*;
+use openai_api_rust::chat::*;
+use openai_api_rust::completions::*;
 
 const LANGUAGES: [&'static str; 8] = ["en", "zh-TW", "ja", "zh-Hant", "ko", "zh", "es", "fr"];  //英语、繁体中文、日语、韩语、简体中文、西班牙语、法语
 
@@ -32,6 +35,23 @@ struct Subtitle {
     text: String,
     startSeconds: f64,
     endSeconds: f64,
+}
+
+#[derive(Serialize, Deserialize)]
+struct OpenAIRequest {
+    model: String,
+    prompt: String,
+    max_tokens: u32,
+}
+
+#[derive(Serialize, Deserialize)]
+struct OpenAIResponse {
+    choices: Vec<Choice>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct Choice {
+    text: String,
 }
 
 #[tauri::command]
@@ -181,6 +201,31 @@ async fn fetch_video(video: String, digest: DigestScraper) -> Digest {
     scraped
 }
 
+#[tauri::command]
+async fn communicate_with_openai(prompt: String) -> Result<String, String> {  
+
+    let auth = Auth::from_env().map_err(|e| format!("API密钥错误: {:?}", e))?;
+    let openai = OpenAI::new(auth, "https://api.openai.com/v1/");
+    let body = ChatBody {
+        model: "gpt-4o-mini-2024-07-18".to_string(),
+        max_tokens: Some(100),
+        temperature: Some(0_f32),
+        top_p: Some(0_f32),
+        n: Some(2),
+        stream: Some(false),
+        stop: None,
+        presence_penalty: None,
+        frequency_penalty: None,
+        logit_bias: None,
+        user: None,
+        messages: vec![Message { role: Role::User, content: prompt }],
+    };
+    let rs = openai.chat_completion_create(&body);
+    let choice = rs.unwrap().choices;
+    let message = &choice[0].message.as_ref().unwrap();
+    Ok(message.content.clone())
+
+}
 
 #[tauri::command]
 fn greet(name: &str) -> String {
@@ -193,7 +238,7 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_shell::init())
-        .invoke_handler(tauri::generate_handler![greet, get_transcript])
+        .invoke_handler(tauri::generate_handler![greet, get_transcript, communicate_with_openai])
         .plugin(tauri_plugin_log::Builder::new().build())
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
