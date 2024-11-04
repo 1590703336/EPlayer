@@ -5,6 +5,8 @@ import "./App.css";
 import SrtParser2 from "srt-parser-2"; // 导入 srt-parser-2 以处理字幕文件的解析
 import { check } from '@tauri-apps/plugin-updater';
 import { relaunch } from '@tauri-apps/plugin-process';
+import { open } from '@tauri-apps/plugin-shell';  // 导入 open 函数用于打开链接
+import { getVersion } from '@tauri-apps/api/app';  // 导入获取版本号的函数
 
 function App() {
   // 定义各种状态变量来存储视频文件路径、字幕、当前播放时间、字幕索引、播放速度等
@@ -20,8 +22,30 @@ function App() {
   const [isRepeating, setIsRepeating] = useState(false); // 用于存储是否重复播放当前字幕
   const [updateInfo, setUpdateInfo] = useState(null); // 用于存储更新信息
   const [isModalOpen, setIsModalOpen] = useState(false); // 用于存储更新弹窗的状态
+  const [showAboutMenu, setShowAboutMenu] = useState(false); // 添加状态控制菜单显示
+  const [appVersion, setAppVersion] = useState('');
 
-  
+  // 获取应用版本号
+  useEffect(() => {
+    getVersion().then(version => {
+      setAppVersion(version);
+    });
+  }, []);
+
+  // 处理点击其他区域关闭菜单
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showAboutMenu && !event.target.closest('.about-container')) {
+        setShowAboutMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showAboutMenu]);
+
   // 处理字幕文件上传
   function handleSubtitleUpload(event) {
     const file = event.target.files[0]; // 获取文件对象
@@ -89,10 +113,10 @@ function App() {
       } else if (event.key === 'r') {
         // 切换重复播放当前句子的状态
         setIsRepeating((prev) => !prev); // 切换 isRepeating 状态
-      } else if (event.key === 'ArrowDown') {
+      } else if (event.key === 'ArrowUp') {
         // 增加播放速度
         setPlaybackRate((prevRate) => Math.min(prevRate + 0.1, 2)); // 最大速度限制2
-      } else if (event.key === 'ArrowUp') {
+      } else if (event.key === 'ArrowDown') {
         // 降低播放速度
         setPlaybackRate((prevRate) => Math.max(prevRate - 0.1, 0.5)); // 最小速度限制0.5
       }
@@ -188,10 +212,33 @@ function App() {
     setPlaybackRate(1); // 重置播放速度
   };  
 
+  // 修改处理"关于"点击的函数
+  const handleAboutClick = () => {
+    setShowAboutMenu(!showAboutMenu);
+  };
+
+  // 处理官网点击
+  const handleWebsiteClick = async () => {
+    await open('https://www.eplayer.fun/');
+    setShowAboutMenu(false);
+  };
+
   return (
     <main className="container">
-      <div className="home-icon" onClick={resetToHome}> {/* 点击图标重置应用状态 */}
+      <div className="home-icon" onClick={resetToHome}>
         <i className="fas fa-home"></i>
+      </div>
+      {/* 修改关于按钮和菜单 */}
+      <div className="about-container">
+        <div className="about-icon" onClick={handleAboutClick}>
+          <i className="fas fa-info-circle"></i>  {/* 使用信息图标 */}
+        </div>
+        {showAboutMenu && (
+          <div className="about-menu">
+            <div className="menu-item">Version {appVersion}</div>
+            <div className="menu-item" onClick={handleWebsiteClick}>官网</div>
+          </div>
+        )}
       </div>
       <div className="main-content">
         <div className="player-wrapper">
