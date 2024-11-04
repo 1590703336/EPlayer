@@ -175,3 +175,17 @@ jobs:
           git add .
           git commit -m "Update installers and version.json from GitHub Actions"
           git push https://${{ secrets.GITEE_USERNAME }}:${{ secrets.GITEE_TOKEN }}@gitee.com/xzkids/eplayer-assets.git master --force
+
+      - name: Sync version.json to EPLayer_website
+        run: |
+          # 克隆 EPLayer_website 仓库
+          git clone https://github.com/smstone2006/EPLayer_website.git website-repo
+          # 复制 version.json 到根目录
+          cp version.json website-repo/
+          # 提交更改
+          cd website-repo
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add version.json
+          git commit -m "Update version.json from GitHub Actions"
+          git push https://x-access-token:${{ secrets.WEBSITE_TOKEN }}@github.com/smstone2006/EPLayer_website.git main
