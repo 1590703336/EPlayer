@@ -26,7 +26,7 @@
   margin: 0;
   padding-top: 0%; /* 设置顶部内边距为视口高度的 0% */
   display: flex; /* 使用 flex 布局 */
-  flex-direction: row; /* 设置子元素按行排列 */
+  flex-direction: row; /* 设���子元素按行排列 */
   justify-content: center; /* 水平居中子元素 */
   text-align: center; /* 文本居中对齐 */
 }
@@ -121,7 +121,7 @@ button {
 
 @media (prefers-color-scheme: dark) {
   :root {
-    color: #f6f6f6d1; /* 设置深色模式下的文字颜色 */
+    color: #f6f6f6d1; /* 设置深���模式下的文字颜色 */
     background-color: #000000; /* 设置深色模式下的背景颜色 */
   }
 
@@ -299,4 +299,69 @@ input[type="file"] {
 
 .menu-item:first-child:hover {
   background-color: #ffffff;
+}
+
+.guide-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.guide-content {
+  background-color: rgba(0, 0, 0, 0.8);
+  border-radius: 8px;
+  width: 80%;
+  height: 90%;
+  max-width: 1000px;
+  padding: 10px;
+  position: relative;
+  overflow-y: auto;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+}
+
+.guide-header {
+  display: flex;
+  justify-content: flex-end;
+  padding: 5px;
+  margin-bottom: 0;
+  border-bottom: none;
+}
+
+.guide-body {
+  padding: 0;
+}
+
+.guide-section {
+  margin: 0;
+}
+
+.guide-image {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+  margin: 0;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+}
+
+.close-button {
+  background-color: rgba(255, 255, 255, 0.2);  /* 添加半透明白色背景 */
+  border: none;
+  font-size: 1.5em;
+  cursor: pointer;
+  padding: 4px 8px;  /* 增加一点内边距 */
+  border-radius: 4px;  /* 添加圆角 */
+  color: #ffffff;  /* 保持图标为白色 */
+  transition: background-color 0.2s ease;  /* 添加平滑过渡效果 */
+}
+
+.close-button:hover {
+  background-color: rgba(255, 255, 255, 0.3);  /* 悬停时稍微增加透明度 */
+  transform: scale(1.1);  /* 添加悬停时的放大效果 */
 }
