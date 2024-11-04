@@ -144,6 +144,10 @@ jobs:
               "windows-x86_64-setup": {
                 "signature": "'$(echo '${{ steps.get_release.outputs.result }}' | jq -r '.assets[] | select(.name | test(".*setup.*\\.exe\\.sig$")) | .browser_download_url' | xargs wget -qO-)'",
                 "url": "https://gitee.com/xzkids/eplayer-assets/raw/master/'$(echo '${{ steps.get_release.outputs.result }}' | jq -r '.assets[] | select(.name | test(".*setup.*\\.exe$")) | .name')'"
+              },
+              "linux-x86_64": {
+                "signature": "'$(echo '${{ steps.get_release.outputs.result }}' | jq -r '.assets[] | select(.name | test(".*_amd64\\.deb\\.sig$")) | .browser_download_url' | xargs wget -qO-)'",
+                "url": "https://gitee.com/xzkids/eplayer-assets/raw/master/'$(echo '${{ steps.get_release.outputs.result }}' | jq -r '.assets[] | select(.name | test(".*_amd64\\.deb$")) | .name')'"
               }
             }
           }' > version.json
@@ -165,6 +169,7 @@ jobs:
           cp ../release_assets/*.dmg . 2>/dev/null || true
           cp ../release_assets/*.msi . 2>/dev/null || true
           cp ../release_assets/*setup*.exe . 2>/dev/null || true
+          cp ../release_assets/*.deb . 2>/dev/null || true
           cp ../version.json .
           # 提交更改
           git add .
