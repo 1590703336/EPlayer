@@ -14,11 +14,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # macOS builds
+          # macOS Universal Binary
           - platform: macos-latest
-            target: x86_64-apple-darwin
-          - platform: macos-latest
-            target: aarch64-apple-darwin
+            target: universal-apple-darwin
           # Windows builds
           - platform: windows-latest
             target: x86_64-pc-windows-msvc
@@ -74,6 +72,7 @@ jobs:
         run: |
           rustup target add aarch64-apple-darwin
           rustup target add x86_64-apple-darwin
+          rustup target add universal-apple-darwin
 
       - name: Install frontend dependencies
         uses: nick-fields/retry@v2
@@ -134,13 +133,9 @@ jobs:
             "notes": "${{ fromJson(steps.get_release.outputs.result).body }}",
             "pub_date": "${{ fromJson(steps.get_release.outputs.result).published_at }}",
             "platforms": {
-              "darwin-x86_64": {
-                "signature": "'$(echo '${{ steps.get_release.outputs.result }}' | jq -r '.assets[] | select(.name | test(".*x64\\.app\\.tar\\.gz\\.sig$")) | .browser_download_url' | xargs wget -qO-)'",
-                "url": "https://gitee.com/xzkids/eplayer-assets/raw/master/'$(echo '${{ steps.get_release.outputs.result }}' | jq -r '.assets[] | select(.name | test(".*x64\\.dmg$")) | .name')'"
-              },
-              "darwin-aarch64": {
-                "signature": "'$(echo '${{ steps.get_release.outputs.result }}' | jq -r '.assets[] | select(.name | test(".*aarch64\\.app\\.tar\\.gz\\.sig$")) | .browser_download_url' | xargs wget -qO-)'",
-                "url": "https://gitee.com/xzkids/eplayer-assets/raw/master/'$(echo '${{ steps.get_release.outputs.result }}' | jq -r '.assets[] | select(.name | test(".*aarch64\\.dmg$")) | .name')'"
+              "darwin-universal": {
+                "signature": "'$(echo '${{ steps.get_release.outputs.result }}' | jq -r '.assets[] | select(.name | test(".*universal.*\\.app\\.tar\\.gz\\.sig$")) | .browser_download_url' | xargs wget -qO-)'",
+                "url": "https://gitee.com/xzkids/eplayer-assets/raw/master/'$(echo '${{ steps.get_release.outputs.result }}' | jq -r '.assets[] | select(.name | test(".*universal.*\\.dmg$")) | .name')'"
               },
               "windows-x86_64": {
                 "signature": "'$(echo '${{ steps.get_release.outputs.result }}' | jq -r '.assets[] | select(.name | test(".*x64.*\\.msi\\.sig$")) | .browser_download_url' | xargs wget -qO-)'",
