@@ -121,8 +121,8 @@ jobs:
         run: |
           mkdir -p release_assets
           cd release_assets
-          # 下载 dmg、msi 和 setup.exe 文件
-          for asset_url in $(echo '${{ steps.get_release.outputs.result }}' | jq -r '.assets[] | select(.name | test("\\.(dmg|msi|exe)$")) | .browser_download_url'); do
+          # 下载 dmg、msi、deb 和 setup.exe 文件
+          for asset_url in $(echo '${{ steps.get_release.outputs.result }}' | jq -r '.assets[] | select(.name | test("\\.(dmg|msi|exe|deb)$")) | .browser_download_url'); do
             wget $asset_url
           done
 
@@ -165,7 +165,7 @@ jobs:
           cd gitee-repo
           git rm -rf .
           git clean -fdx
-          # 复制 dmg、msi 和 setup.exe 文件
+          # 复制 dmg、msi、deb 和 setup.exe 文件
           cp ../release_assets/*.dmg . 2>/dev/null || true
           cp ../release_assets/*.msi . 2>/dev/null || true
           cp ../release_assets/*setup*.exe . 2>/dev/null || true
