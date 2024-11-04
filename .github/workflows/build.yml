@@ -177,9 +177,11 @@ jobs:
           git push https://${{ secrets.GITEE_USERNAME }}:${{ secrets.GITEE_TOKEN }}@gitee.com/xzkids/eplayer-assets.git master --force
 
       - name: Sync version.json to EPLayer_website
+        env:
+          GH_TOKEN: ${{ secrets.WEBSITE_TOKEN }}
         run: |
-          # 克隆 EPLayer_website 仓库
-          git clone https://github.com/smstone2006/EPLayer_website.git website-repo
+          # 克隆 EPLayer_website 仓库（使用 token 认证）
+          git clone https://${GH_TOKEN}@github.com/smstone2006/EPLayer_website.git website-repo
           # 复制 version.json 到根目录
           cp version.json website-repo/
           # 提交更改
@@ -188,4 +190,4 @@ jobs:
           git config user.email "actions@github.com"
           git add version.json
           git commit -m "Update version.json from GitHub Actions"
-          git push https://x-access-token:${{ secrets.WEBSITE_TOKEN }}@github.com/smstone2006/EPLayer_website.git main
+          git push origin main
