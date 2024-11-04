@@ -123,8 +123,8 @@ jobs:
         run: |
           mkdir -p release_assets
           cd release_assets
-          # 只下载安装包文件
-          for asset_url in $(echo '${{ steps.get_release.outputs.result }}' | jq -r '.assets[] | select(.name | test("\\.(dmg|msi|AppImage)$")) | .browser_download_url'); do
+          # 只下载 dmg 和 msi 文件
+          for asset_url in $(echo '${{ steps.get_release.outputs.result }}' | jq -r '.assets[] | select(.name | test("\\.(dmg|msi)$")) | .browser_download_url'); do
             wget $asset_url
           done
 
@@ -146,10 +146,6 @@ jobs:
               "windows-x86_64": {
                 "signature": "",
                 "url": "'$(echo '${{ steps.get_release.outputs.result }}' | jq -r '.assets[] | select(.name | test(".*x64.*\\.msi$")) | .browser_download_url')'"
-              },
-              "linux-x86_64": {
-                "signature": "",
-                "url": "'$(echo '${{ steps.get_release.outputs.result }}' | jq -r '.assets[] | select(.name | test(".*x86_64-unknown-linux-gnu.*\\.AppImage$")) | .browser_download_url')'"
               }
             }
           }' > version.json
@@ -167,10 +163,9 @@ jobs:
           cd gitee-repo
           git rm -rf .
           git clean -fdx
-          # 只复制新文件
+          # 只复制 dmg 和 msi 文件
           cp ../release_assets/*.dmg . 2>/dev/null || true
           cp ../release_assets/*.msi . 2>/dev/null || true
-          cp ../release_assets/*.AppImage . 2>/dev/null || true
           cp ../version.json .
           # 提交更改
           git add .
