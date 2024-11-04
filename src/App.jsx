@@ -5,6 +5,9 @@ import "./App.css";
 import SrtParser2 from "srt-parser-2"; // 导入 srt-parser-2 以处理字幕文件的解析
 import { check } from '@tauri-apps/plugin-updater';
 import { relaunch } from '@tauri-apps/plugin-process';
+import { open } from '@tauri-apps/plugin-shell';  // 导入 open 函数用于打开链接
+import { getVersion } from '@tauri-apps/api/app';  // 导入获取版本号的函数
+import guideImage1 from './assets/guide1.png';
 
 function App() {
   // 定义各种状态变量来存储视频文件路径、字幕、当前播放时间、字幕索引、播放速度等
@@ -18,9 +21,33 @@ function App() {
   const [isLocalVideo, setIsLocalVideo] = useState(false); // 用于存储是否为本地视频的状态
   const [isNetworkVideo, setIsNetworkVideo] = useState(false); // 用于存储是否为网络视频的状态
   const [isRepeating, setIsRepeating] = useState(false); // 用于存储是否重复播放当前字幕
+  const [updateInfo, setUpdateInfo] = useState(null); // 用于存储更新信息
+  const [isModalOpen, setIsModalOpen] = useState(false); // 用于存储更新弹窗的状态
+  const [showAboutMenu, setShowAboutMenu] = useState(false); // 添加状态控制菜单显示
+  const [appVersion, setAppVersion] = useState('');
+  const [showGuide, setShowGuide] = useState(false);
 
+  // 获取应用版本号
+  useEffect(() => {
+    getVersion().then(version => {
+      setAppVersion(version);
+    });
+  }, []);
 
-  
+  // 处理点击其他区域关闭菜单
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showAboutMenu && !event.target.closest('.about-container')) {
+        setShowAboutMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showAboutMenu]);
+
   // 处理字幕文件上传
   function handleSubtitleUpload(event) {
     const file = event.target.files[0]; // 获取文件对象
@@ -88,12 +115,14 @@ function App() {
       } else if (event.key === 'r') {
         // 切换重复播放当前句子的状态
         setIsRepeating((prev) => !prev); // 切换 isRepeating 状态
-      } else if (event.key === 'ArrowDown') {
+      } else if (event.key === 'ArrowUp') {
         // 增加播放速度
         setPlaybackRate((prevRate) => Math.min(prevRate + 0.1, 2)); // 最大速度限制2
-      } else if (event.key === 'ArrowUp') {
+      } else if (event.key === 'ArrowDown') {
         // 降低播放速度
         setPlaybackRate((prevRate) => Math.max(prevRate - 0.1, 0.5)); // 最小速度限制0.5
+      } else if (event.key.toLowerCase() === 'h') {  // 添加对 h 键的支持
+        setShowGuide(prev => !prev);  // 切换 guide 显示状态
       }
     };
 
@@ -127,6 +156,7 @@ function App() {
     }
   }, [currentTime, subtitles]); // 依赖于当前播放时间的变化
 
+  
   // 获取当前活跃的字幕文本
   const activeSubtitle = subtitles[currentSubtitleIndex-1]?.text || '';
 
@@ -186,11 +216,65 @@ function App() {
     setPlaybackRate(1); // 重置播放速度
   };  
 
+  // 修改处理"关于"点击的函数
+  const handleAboutClick = () => {
+    setShowAboutMenu(!showAboutMenu);
+  };
+
+  // 处理官网点击
+  const handleWebsiteClick = async () => {
+    await open('https://www.eplayer.fun/');
+    setShowAboutMenu(false);
+  };
+
+  // 添加处理 Guide 点击的函数
+  const handleGuideClick = () => {
+    setShowGuide(true);
+    setShowAboutMenu(false); // 关闭下拉菜单
+  };
+
+  // 添加关闭 Guide 的函数
+  const handleCloseGuide = () => {
+    setShowGuide(false);
+  };
+
   return (
     <main className="container">
-      <div className="home-icon" onClick={resetToHome}> {/* 点击图标重置应用状态 */}
+      <div className="home-icon" onClick={resetToHome}>
         <i className="fas fa-home"></i>
       </div>
+      {/* 修改 about menu 部分 */}
+      <div className="about-container">
+        <div className="about-icon" onClick={handleAboutClick}>
+          <i className="fas fa-info-circle"></i>
+        </div>
+        {showAboutMenu && (
+          <div className="about-menu">
+            <div className="menu-item">Version {appVersion}</div>
+            <div className="menu-item" onClick={handleWebsiteClick}>Visit Website</div>
+            <div className="menu-item" onClick={handleGuideClick}>User Guide</div>
+          </div>
+        )}
+      </div>
+
+      {/* 添加 Guide 界面 */}
+      {showGuide && (
+        <div className="guide-overlay">
+          <div className="guide-content">
+            <div className="guide-header">
+              <button className="close-button" onClick={handleCloseGuide}>
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+            <div className="guide-body">
+              <div className="guide-section">
+                <img src={guideImage1} alt="Guide" className="guide-image" />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="main-content">
         <div className="player-wrapper">
           <ReactPlayer
@@ -221,13 +305,13 @@ function App() {
                     type="text"
                     value={networkVideoUrl}
                     onChange={(e) => setNetworkVideoUrl(e.target.value)}
-                    placeholder="输入网络视频链接" // 提示用户输入网络视频链接
+                    placeholder="Enter YouTube link" // 提示用户输入网络视频链接
                   />
-                  <button type="submit">加载网络视频</button>
+                  <button type="submit">Load</button>   {/* 注释：加载网络视频 */}
                 </form>
 
                 <div className="file-input-wrapper">
-                  <label htmlFor="local-video-input">选择本地视频文件：</label>
+                  <label htmlFor="local-video-input">Select local video file:</label>  {/* 注释：选择本地视频文件 */}
                   <input style={{ width: 150 }}
                     id="local-video-input"
                     type="file"
@@ -241,7 +325,7 @@ function App() {
           {/* 如果是本地视频，显示字幕文件输入选项 */}
           {isLocalVideo && (
             <div className="file-input-wrapper">
-              <label htmlFor="subtitle-input">选择字幕文件：</label>
+              <label htmlFor="subtitle-input">Select subtitle file:</label>  {/* 注释：选择字幕文件 */}
               <input style={{ width: 150 }}
                 id="subtitle-input"
                 type="file"
