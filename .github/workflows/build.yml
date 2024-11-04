@@ -161,16 +161,21 @@ jobs:
 
       - name: Clone Gitee repository
         run: |
-          git clone https://gitee.com/xzkids/eplayer-assets.git gitee-repo
-          # 只复制安装包和 version.json
-          cp release_assets/*.dmg gitee-repo/ 2>/dev/null || true
-          cp release_assets/*.msi gitee-repo/ 2>/dev/null || true
-          cp release_assets/*.AppImage gitee-repo/ 2>/dev/null || true
-          cp version.json gitee-repo/
+          # 使用浅克隆，只获取最新版本
+          git clone --depth 1 https://gitee.com/xzkids/eplayer-assets.git gitee-repo
+          # 清空目录（保留 .git）
           cd gitee-repo
+          git rm -rf .
+          git clean -fdx
+          # 只复制新文件
+          cp ../release_assets/*.dmg . 2>/dev/null || true
+          cp ../release_assets/*.msi . 2>/dev/null || true
+          cp ../release_assets/*.AppImage . 2>/dev/null || true
+          cp ../version.json .
+          # 提交更改
           git add .
           git commit -m "Update installers and version.json from GitHub Actions"
-          git push https://${{ secrets.GITEE_USERNAME }}:${{ secrets.GITEE_TOKEN }}@gitee.com/xzkids/eplayer-assets.git
+          git push https://${{ secrets.GITEE_USERNAME }}:${{ secrets.GITEE_TOKEN }}@gitee.com/xzkids/eplayer-assets.git master --force
       - name: Upload assets to Gitee
         uses: yanglbme/gitee-pages-action@main
         with:
