@@ -236,7 +236,7 @@ function App() {
         {showAboutMenu && (
           <div className="about-menu">
             <div className="menu-item">Version {appVersion}</div>
-            <div className="menu-item" onClick={handleWebsiteClick}>官网</div>
+            <div className="menu-item" onClick={handleWebsiteClick}>Visit Website</div>
           </div>
         )}
       </div>
@@ -270,13 +270,13 @@ function App() {
                     type="text"
                     value={networkVideoUrl}
                     onChange={(e) => setNetworkVideoUrl(e.target.value)}
-                    placeholder="输入网络视频链接" // 提示用户输入网络视频链接
+                    placeholder="Enter the video link" // 提示用户输入网络视频链接
                   />
-                  <button type="submit">加载网络视频</button>
+                  <button type="submit">Load</button>   {/* 注释：加载网络视频 */}
                 </form>
 
                 <div className="file-input-wrapper">
-                  <label htmlFor="local-video-input">选择本地视频文件：</label>
+                  <label htmlFor="local-video-input">Select local video file:</label>  {/* 注释：选择本地视频文件 */}
                   <input style={{ width: 150 }}
                     id="local-video-input"
                     type="file"
@@ -290,7 +290,7 @@ function App() {
           {/* 如果是本地视频，显示字幕文件输入选项 */}
           {isLocalVideo && (
             <div className="file-input-wrapper">
-              <label htmlFor="subtitle-input">选择字幕文件：</label>
+              <label htmlFor="subtitle-input">Select subtitle file:</label>  {/* 注释：选择字幕文件 */}
               <input style={{ width: 150 }}
                 id="subtitle-input"
                 type="file"
