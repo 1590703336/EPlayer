@@ -7,6 +7,7 @@ import { check } from '@tauri-apps/plugin-updater';
 import { relaunch } from '@tauri-apps/plugin-process';
 import { open } from '@tauri-apps/plugin-shell';  // 导入 open 函数用于打开链接
 import { getVersion } from '@tauri-apps/api/app';  // 导入获取版本号的函数
+import guideImage1 from './assets/guide1.png';
 
 function App() {
   // 定义各种状态变量来存储视频文件路径、字幕、当前播放时间、字幕索引、播放速度等
@@ -24,6 +25,7 @@ function App() {
   const [isModalOpen, setIsModalOpen] = useState(false); // 用于存储更新弹窗的状态
   const [showAboutMenu, setShowAboutMenu] = useState(false); // 添加状态控制菜单显示
   const [appVersion, setAppVersion] = useState('');
+  const [showGuide, setShowGuide] = useState(false);
 
   // 获取应用版本号
   useEffect(() => {
@@ -223,23 +225,54 @@ function App() {
     setShowAboutMenu(false);
   };
 
+  // 添加处理 Guide 点击的函数
+  const handleGuideClick = () => {
+    setShowGuide(true);
+    setShowAboutMenu(false); // 关闭下拉菜单
+  };
+
+  // 添加关闭 Guide 的函数
+  const handleCloseGuide = () => {
+    setShowGuide(false);
+  };
+
   return (
     <main className="container">
       <div className="home-icon" onClick={resetToHome}>
         <i className="fas fa-home"></i>
       </div>
-      {/* 修改关于按钮和菜单 */}
+      {/* 修改 about menu 部分 */}
       <div className="about-container">
         <div className="about-icon" onClick={handleAboutClick}>
-          <i className="fas fa-info-circle"></i>  {/* 使用信息图标 */}
+          <i className="fas fa-info-circle"></i>
         </div>
         {showAboutMenu && (
           <div className="about-menu">
             <div className="menu-item">Version {appVersion}</div>
             <div className="menu-item" onClick={handleWebsiteClick}>Visit Website</div>
+            <div className="menu-item" onClick={handleGuideClick}>User Guide</div>
           </div>
         )}
       </div>
+
+      {/* 添加 Guide 界面 */}
+      {showGuide && (
+        <div className="guide-overlay">
+          <div className="guide-content">
+            <div className="guide-header">
+              <button className="close-button" onClick={handleCloseGuide}>
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+            <div className="guide-body">
+              <div className="guide-section">
+                <img src={guideImage1} alt="Guide" className="guide-image" />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="main-content">
         <div className="player-wrapper">
           <ReactPlayer
