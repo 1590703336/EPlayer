@@ -153,14 +153,20 @@ jobs:
             }
           }' > version.json
 
-      - name: Sync to Gitee
-        uses: Yikun/hub-mirror-action@master
-        with:
-          src: github/${{ github.repository_owner }}
-          dst: gitee/xzkids
-          dst_key: ${{ secrets.GITEE_PRIVATE_KEY }}
-          dst_token: ${{ secrets.GITEE_TOKEN }}
-          static_list: "EPlayer"
+      - name: Configure Git
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+
+      - name: Clone Gitee repository
+        run: |
+          git clone https://gitee.com/xzkids/eplayer-assets.git gitee-repo
+          cp release_assets/* gitee-repo/
+          cp version.json gitee-repo/
+          cd gitee-repo
+          git add .
+          git commit -m "Update from GitHub Actions"
+          git push https://${{ secrets.GITEE_USERNAME }}:${{ secrets.GITEE_TOKEN }}@gitee.com/xzkids/eplayer-assets.git
 
       - name: Upload assets to Gitee
         uses: yanglbme/gitee-pages-action@main
