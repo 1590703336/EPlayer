@@ -154,12 +154,13 @@ jobs:
           }' > version.json
 
       - name: Sync to Gitee
-        uses: wearerequired/git-mirror-action@master
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.GITEE_PRIVATE_KEY }}
+        uses: Yikun/hub-mirror-action@master
         with:
-          source-repo: "git@github.com:${{ github.repository }}.git"
-          destination-repo: "git@gitee.com:xzkids/eplayer-assets.git"
+          src: github/${{ github.repository_owner }}
+          dst: gitee/xzkids
+          dst_key: ${{ secrets.GITEE_PRIVATE_KEY }}
+          dst_token: ${{ secrets.GITEE_TOKEN }}
+          static_list: "EPlayer"
 
       - name: Upload assets to Gitee
         uses: yanglbme/gitee-pages-action@main
