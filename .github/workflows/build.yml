@@ -123,7 +123,8 @@ jobs:
         run: |
           mkdir -p release_assets
           cd release_assets
-          for asset_url in $(echo '${{ steps.get_release.outputs.result }}' | jq -r '.assets[].browser_download_url'); do
+          # 只下载安装包文件
+          for asset_url in $(echo '${{ steps.get_release.outputs.result }}' | jq -r '.assets[] | select(.name | test("\\.(dmg|msi|AppImage)$")) | .browser_download_url'); do
             wget $asset_url
           done
 
@@ -161,13 +162,15 @@ jobs:
       - name: Clone Gitee repository
         run: |
           git clone https://gitee.com/xzkids/eplayer-assets.git gitee-repo
-          cp release_assets/* gitee-repo/
+          # 只复制安装包和 version.json
+          cp release_assets/*.dmg gitee-repo/ 2>/dev/null || true
+          cp release_assets/*.msi gitee-repo/ 2>/dev/null || true
+          cp release_assets/*.AppImage gitee-repo/ 2>/dev/null || true
           cp version.json gitee-repo/
           cd gitee-repo
           git add .
-          git commit -m "Update from GitHub Actions"
+          git commit -m "Update installers and version.json from GitHub Actions"
           git push https://${{ secrets.GITEE_USERNAME }}:${{ secrets.GITEE_TOKEN }}@gitee.com/xzkids/eplayer-assets.git
-
       - name: Upload assets to Gitee
         uses: yanglbme/gitee-pages-action@main
         with:
