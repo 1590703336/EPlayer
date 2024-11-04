@@ -136,16 +136,16 @@ jobs:
             "pub_date": "${{ fromJson(steps.get_release.outputs.result).published_at }}",
             "platforms": {
               "darwin-x86_64": {
-                "signature": "",
-                "url": "'$(echo '${{ steps.get_release.outputs.result }}' | jq -r '.assets[] | select(.name | test(".*x86_64-apple-darwin.*\\.dmg$")) | .browser_download_url')'"
+                "signature": "'$(echo '${{ steps.get_release.outputs.result }}' | jq -r '.assets[] | select(.name | test(".*x86_64-apple-darwin.*\\.dmg\\.sig$")) | .browser_download_url' | xargs -I {} curl -sL {} | base64 -w 0)'",
+                "url": "https://gitee.com/xzkids/eplayer-assets/raw/master/'$(echo '${{ steps.get_release.outputs.result }}' | jq -r '.assets[] | select(.name | test(".*x86_64-apple-darwin.*\\.dmg$")) | .name')'"
               },
               "darwin-aarch64": {
-                "signature": "",
-                "url": "'$(echo '${{ steps.get_release.outputs.result }}' | jq -r '.assets[] | select(.name | test(".*aarch64-apple-darwin.*\\.dmg$")) | .browser_download_url')'"
+                "signature": "'$(echo '${{ steps.get_release.outputs.result }}' | jq -r '.assets[] | select(.name | test(".*aarch64-apple-darwin.*\\.dmg\\.sig$")) | .browser_download_url' | xargs -I {} curl -sL {} | base64 -w 0)'",
+                "url": "https://gitee.com/xzkids/eplayer-assets/raw/master/'$(echo '${{ steps.get_release.outputs.result }}' | jq -r '.assets[] | select(.name | test(".*aarch64-apple-darwin.*\\.dmg$")) | .name')'"
               },
               "windows-x86_64": {
-                "signature": "",
-                "url": "'$(echo '${{ steps.get_release.outputs.result }}' | jq -r '.assets[] | select(.name | test(".*x64.*\\.msi$")) | .browser_download_url')'"
+                "signature": "'$(echo '${{ steps.get_release.outputs.result }}' | jq -r '.assets[] | select(.name | test(".*x64.*\\.msi\\.sig$")) | .browser_download_url' | xargs -I {} curl -sL {} | base64 -w 0)'",
+                "url": "https://gitee.com/xzkids/eplayer-assets/raw/master/'$(echo '${{ steps.get_release.outputs.result }}' | jq -r '.assets[] | select(.name | test(".*x64.*\\.msi$")) | .name')'"
               }
             }
           }' > version.json
