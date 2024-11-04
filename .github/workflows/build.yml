@@ -136,12 +136,12 @@ jobs:
             "pub_date": "${{ fromJson(steps.get_release.outputs.result).published_at }}",
             "platforms": {
               "darwin-x86_64": {
-                "signature": "'$(echo '${{ steps.get_release.outputs.result }}' | jq -r '.assets[] | select(.name | test(".*x86_64-apple-darwin.*\\.dmg\\.sig$")) | .browser_download_url' | xargs -I {} curl -sL {} | base64 -w 0)'",
-                "url": "https://gitee.com/xzkids/eplayer-assets/raw/master/'$(echo '${{ steps.get_release.outputs.result }}' | jq -r '.assets[] | select(.name | test(".*x86_64-apple-darwin.*\\.dmg$")) | .name')'"
+                "signature": "'$(echo '${{ steps.get_release.outputs.result }}' | jq -r '.assets[] | select(.name | test(".*x64\\.app\\.tar\\.gz\\.sig$")) | .browser_download_url' | xargs -I {} curl -sL {} | base64 -w 0)'",
+                "url": "https://gitee.com/xzkids/eplayer-assets/raw/master/'$(echo '${{ steps.get_release.outputs.result }}' | jq -r '.assets[] | select(.name | test(".*x64\\.dmg$")) | .name')'"
               },
               "darwin-aarch64": {
-                "signature": "'$(echo '${{ steps.get_release.outputs.result }}' | jq -r '.assets[] | select(.name | test(".*aarch64-apple-darwin.*\\.dmg\\.sig$")) | .browser_download_url' | xargs -I {} curl -sL {} | base64 -w 0)'",
-                "url": "https://gitee.com/xzkids/eplayer-assets/raw/master/'$(echo '${{ steps.get_release.outputs.result }}' | jq -r '.assets[] | select(.name | test(".*aarch64-apple-darwin.*\\.dmg$")) | .name')'"
+                "signature": "'$(echo '${{ steps.get_release.outputs.result }}' | jq -r '.assets[] | select(.name | test(".*aarch64\\.app\\.tar\\.gz\\.sig$")) | .browser_download_url' | xargs -I {} curl -sL {} | base64 -w 0)'",
+                "url": "https://gitee.com/xzkids/eplayer-assets/raw/master/'$(echo '${{ steps.get_release.outputs.result }}' | jq -r '.assets[] | select(.name | test(".*aarch64\\.dmg$")) | .name')'"
               },
               "windows-x86_64": {
                 "signature": "'$(echo '${{ steps.get_release.outputs.result }}' | jq -r '.assets[] | select(.name | test(".*x64.*\\.msi\\.sig$")) | .browser_download_url' | xargs -I {} curl -sL {} | base64 -w 0)'",
