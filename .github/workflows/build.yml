@@ -15,16 +15,16 @@ jobs:
       matrix:
         include:
           # macOS builds
-          # - platform: macos-latest
-          #   target: x86_64-apple-darwin
+          - platform: macos-latest
+            target: x86_64-apple-darwin
           - platform: macos-latest
             target: aarch64-apple-darwin
-          # # Windows builds
-          # - platform: windows-latest
-          #   target: x86_64-pc-windows-msvc
-          # # Linux builds
-          # - platform: ubuntu-latest
-          #   target: x86_64-unknown-linux-gnu
+          # Windows builds
+          - platform: windows-latest
+            target: x86_64-pc-windows-msvc
+          # Linux builds
+          - platform: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
           
     runs-on: ${{ matrix.platform }}
     timeout-minutes: 30
@@ -49,32 +49,31 @@ jobs:
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
 
-      # Windows 特定的依赖安装
-      # - name: Install Windows Dependencies
-      #   if: matrix.platform == 'windows-latest'
-      #   run: |
-      #     rustup target add x86_64-pc-windows-msvc
+      - name: Install Windows Dependencies
+        if: matrix.platform == 'windows-latest'
+        run: |
+          rustup target add x86_64-pc-windows-msvc
 
-      # - name: Install dependencies (ubuntu only)
-      #   if: matrix.platform == 'ubuntu-latest'
-      #   run: |
-      #     sudo apt-get update
-      #     sudo apt-get install -y \
-      #       libgtk-3-dev \
-      #       libwebkit2gtk-4.0-dev \
-      #       libappindicator3-dev \
-      #       librsvg2-dev \
-      #       patchelf \
-      #       libjavascriptcoregtk-4.1-dev \
-      #       libsoup-3.0-dev \
-      #       libwebkit2gtk-4.1-dev
-      #   continue-on-error: true
+      - name: Install dependencies (ubuntu only)
+        if: matrix.platform == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgtk-3-dev \
+            libwebkit2gtk-4.0-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libjavascriptcoregtk-4.1-dev \
+            libsoup-3.0-dev \
+            libwebkit2gtk-4.1-dev
+        continue-on-error: true
 
       - name: Install dependencies (macos only)
         if: matrix.platform == 'macos-latest'
         run: |
           rustup target add aarch64-apple-darwin
-          # rustup target add x86_64-apple-darwin
+          rustup target add x86_64-apple-darwin
 
       - name: Install frontend dependencies
         uses: nick-fields/retry@v2
@@ -123,8 +122,8 @@ jobs:
         run: |
           mkdir -p release_assets
           cd release_assets
-          # 只下载 dmg 和 msi 文件
-          for asset_url in $(echo '${{ steps.get_release.outputs.result }}' | jq -r '.assets[] | select(.name | test("\\.(dmg|msi)$")) | .browser_download_url'); do
+          # 下载 dmg、msi 和 setup.exe 文件
+          for asset_url in $(echo '${{ steps.get_release.outputs.result }}' | jq -r '.assets[] | select(.name | test("\\.(dmg|msi|exe)$")) | .browser_download_url'); do
             wget $asset_url
           done
 
@@ -146,6 +145,10 @@ jobs:
               "windows-x86_64": {
                 "signature": "'$(echo '${{ steps.get_release.outputs.result }}' | jq -r '.assets[] | select(.name | test(".*x64.*\\.msi\\.sig$")) | .browser_download_url' | xargs wget -qO-)'",
                 "url": "https://gitee.com/xzkids/eplayer-assets/raw/master/'$(echo '${{ steps.get_release.outputs.result }}' | jq -r '.assets[] | select(.name | test(".*x64.*\\.msi$")) | .name')'"
+              },
+              "windows-x86_64-setup": {
+                "signature": "'$(echo '${{ steps.get_release.outputs.result }}' | jq -r '.assets[] | select(.name | test(".*setup.*\\.exe\\.sig$")) | .browser_download_url' | xargs wget -qO-)'",
+                "url": "https://gitee.com/xzkids/eplayer-assets/raw/master/'$(echo '${{ steps.get_release.outputs.result }}' | jq -r '.assets[] | select(.name | test(".*setup.*\\.exe$")) | .name')'"
               }
             }
           }' > version.json
@@ -163,9 +166,10 @@ jobs:
           cd gitee-repo
           git rm -rf .
           git clean -fdx
-          # 只复制 dmg 和 msi 文件
+          # 复制 dmg、msi 和 setup.exe 文件
           cp ../release_assets/*.dmg . 2>/dev/null || true
           cp ../release_assets/*.msi . 2>/dev/null || true
+          cp ../release_assets/*setup*.exe . 2>/dev/null || true
           cp ../version.json .
           # 提交更改
           git add .
