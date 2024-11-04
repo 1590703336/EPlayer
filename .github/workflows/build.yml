@@ -100,7 +100,7 @@ jobs:
         continue-on-error: true
 
   sync-to-gitee: 
-    needs: release  # 等待 release job 完成后才执行
+    needs: release
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -155,7 +155,7 @@ jobs:
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
 
-      - name: Clone Gitee repository
+      - name: Clone and update Gitee repository
         run: |
           # 使用浅克隆，只获取最新版本
           git clone --depth 1 https://gitee.com/xzkids/eplayer-assets.git gitee-repo
@@ -171,12 +171,3 @@ jobs:
           git add .
           git commit -m "Update installers and version.json from GitHub Actions"
           git push https://${{ secrets.GITEE_USERNAME }}:${{ secrets.GITEE_TOKEN }}@gitee.com/xzkids/eplayer-assets.git master --force
-      - name: Upload assets to Gitee
-        uses: yanglbme/gitee-pages-action@main
-        with:
-          gitee-username: ${{ secrets.GITEE_USERNAME }}
-          gitee-password: ${{ secrets.GITEE_PASSWORD }}
-          gitee-repo: xzkids/eplayer-assets
-          branch: master
-          directory: release_assets
-          https: true
