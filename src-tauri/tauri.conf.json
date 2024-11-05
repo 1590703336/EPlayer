@@ -26,7 +26,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "EPlayer      ←:previous subtitle  →:next subtitle  ↑:speed up  ↓:speed down  r:repeat mode  h:help",
+        "title": "EPlayer      ←:previous subtitle  →:next subtitle  ↑:speed up  ↓:speed down  space:play/pause  r:repeat mode  h:help",
         "width": 1200,
         "height": 800
       }

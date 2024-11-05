@@ -15,7 +15,7 @@ function App() {
   const [subtitles, setSubtitles] = useState([]); // 用于存储解析后的字幕
   const [currentTime, setCurrentTime] = useState(0); // 用于存储当前播放时间
   const [currentSubtitleIndex, setCurrentSubtitleIndex] = useState(0); // 用于存储当前字幕索引
-  const [playbackRate, setPlaybackRate] = useState(1); // 用于存储播放速度
+  const [playbackRate, setPlaybackRate] = useState(1); // 用于储播放速度
   const playerRef = useRef(null); // 使用 useRef 获取 ReactPlayer 的引用，便于直接控制播放器
   const [networkVideoUrl, setNetworkVideoUrl] = useState(""); // 用于存储网络视频链接
   const [isLocalVideo, setIsLocalVideo] = useState(false); // 用于存储是否为本地视频的状态
@@ -24,10 +24,15 @@ function App() {
   const [updateInfo, setUpdateInfo] = useState(null); // 用于存储更新信息
   const [isModalOpen, setIsModalOpen] = useState(false); // 用于存储更新弹窗的状态
   const [showAboutMenu, setShowAboutMenu] = useState(false); // 添加状态控制菜单显示
-  const [appVersion, setAppVersion] = useState('');
-  const [showGuide, setShowGuide] = useState(false);
-  const [prompt, setPrompt] = useState("");
-  const [response, setResponse] = useState("");
+  const [appVersion, setAppVersion] = useState(''); // 获取应用版本号
+  const [showGuide, setShowGuide] = useState(false); // 添加状态控制 Guide 显示
+  const [selectedWord, setSelectedWord] = useState(""); // 存储选中的词
+  const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0 }); // 控制上下文菜单
+  const [showResponse, setShowResponse] = useState(false); // 添加新的状态控制 AI 响应窗口的显示
+  const [showCustomInput, setShowCustomInput] = useState(false);  // 控制自定义输入框显示
+  const [customPrompt, setCustomPrompt] = useState("");  // 存储自定义输入内容
+  const [response, setResponse] = useState(""); // 添加状态控制 OpenAI 回复
+  const [isPlaying, setIsPlaying] = useState(true); // 添加新的状态来控制播放状态
 
   // 获取应用版本号
   useEffect(() => {
@@ -100,7 +105,10 @@ function App() {
   // 处理键盘事件的效果，例如切换字幕、调整播放速度等
   useEffect(() => {
     const handleKeyDown = (event) => {
-      if (event.key === 'ArrowLeft') {
+      if (event.key === ' ') {  // 检测空格键
+        event.preventDefault();  // 阻止空格键的默认行为（页面滚动）
+        setIsPlaying(prev => !prev);  // 切换播放状态
+      } else if (event.key === 'ArrowLeft') {
         // 切换到上一句字幕
         const newIndex = Math.max(currentSubtitleIndex - 1, 1); // 确保索引不小于 0
         const startTime = subtitles[newIndex - 1]?.startSeconds; // 获取上一句字幕的开始时间
@@ -130,7 +138,7 @@ function App() {
 
     window.addEventListener('keydown', handleKeyDown); // 添加键盘事件监听器
     return () => {
-      window.removeEventListener('keydown', handleKeyDown); // 组件卸载时移除事件监听器
+      window.removeEventListener('keydown', handleKeyDown); // 组件载时移除事件监听器
     };
   }, [subtitles, currentSubtitleIndex]); // 确保依赖项包括 currentSubtitleIndex
 
@@ -156,7 +164,7 @@ function App() {
         setCurrentSubtitleIndex(Number(subtitles[currentSubtitle].id)); // 更新当前字幕索引         
       }
     }
-  }, [currentTime, subtitles]); // 依赖于当前播放时间的变化
+  }, [currentTime, subtitles]); // 依赖于当前播放时间变化
 
 
   // 获取当前活跃的字幕文本
@@ -240,11 +248,84 @@ function App() {
     setShowGuide(false);
   };
 
-  const handleOpenAICommunication = async () => {
+  // 修改处理文本选择的函数
+  const handleTextSelection = (event) => {
+    const selection = window.getSelection();
+    const selectedText = selection.toString().trim();
+    
+    if (selectedText) {
+      // 阻止默认的上下文菜单
+      event.preventDefault();
+      
+      // 获取选中文本的位置
+      const range = selection.getRangeAt(0);
+      const rect = range.getBoundingClientRect();
+      
+      // 设置选中的词和菜单位置
+      setSelectedWord(selectedText);
+      setContextMenu({
+        visible: true,
+        x: rect.left,
+        // 将菜单放置在选中文本的上方，减去菜单的预估高度（约50px）和一些间距（10px）
+        y: rect.top - 60
+      });
+    } else {
+      // 如果没有选中文本，隐藏菜单
+      setContextMenu({ ...contextMenu, visible: false });
+    }
+  };
+
+  // 处理菜单项点击
+  const handleMenuItemClick = async (role) => {
     try {
-      const result = await invoke("communicate_with_openai", { prompt });
+      const result = await invoke("communicate_with_openai", { 
+        prompt: selectedWord,
+        role: role 
+      });
       setResponse(result);
-      console.log(result);
+      setShowResponse(true); // 显示响应窗口
+    } catch (error) {
+      console.error("Error communicating with OpenAI:", error);
+    }
+    // 隐藏菜单
+    setContextMenu({ ...contextMenu, visible: false });
+  };
+
+  // 添加处理点击其他区域的函数
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      // 检查点击是否在响应窗口外
+      if (showResponse && !event.target.closest('.ai-response')) {
+        setShowResponse(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showResponse]);
+
+  // 修改处理自定义选项点击的逻辑
+  const handleCustomClick = () => {
+    setShowCustomInput(true);
+    setContextMenu({ ...contextMenu, visible: false });
+  };
+
+  // 修改处理自定义输入提交的函数
+  const handleCustomSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      // 简化提示格式为 "选中的词 指令"
+      const combinedPrompt = `${selectedWord}的${customPrompt}`;
+      const result = await invoke("communicate_with_openai", { 
+        prompt: combinedPrompt,
+        role: "Word_Custom" 
+      });
+      setResponse(result);
+      setShowResponse(true);
+      setShowCustomInput(false);  // 隐藏输入框
+      setCustomPrompt("");  // 清空输入
     } catch (error) {
       console.error("Error communicating with OpenAI:", error);
     }
@@ -296,39 +377,26 @@ function App() {
             height="100%"
             controls={true} // 显示播放控制按钮
             onProgress={({ playedSeconds }) => setCurrentTime(playedSeconds)} // 更新当前播放时间
-            playing={true} // 确保视频在切换时自动播放
+            playing={isPlaying}  // 使用 isPlaying 状态控制播放
             progressInterval={100} // 每 100 毫秒更新播放进度
             playbackRate={playbackRate} // 设置播放速度
           />
           <div className="subtitle-overlay">
-            <p style={{ display: 'flex', justifyContent: 'center', position: 'relative' }}>
-              <span style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}>{activeSubtitle}</span> {/* 居中显示当前字幕 */}
-              <span style={{ marginLeft: '3px', marginRight: '3px', position: 'absolute', right: '0' }}>{playbackRate.toFixed(1)}</span> {/* 显示当前播放速度 */}
+            <p 
+              style={{ display: 'flex', justifyContent: 'center', position: 'relative' }}
+              onMouseUp={handleTextSelection}
+              onContextMenu={(e) => e.preventDefault()}
+            >
+              <span style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}>
+                {activeSubtitle}
+              </span>
+              <span style={{ marginLeft: '3px', marginRight: '3px', position: 'absolute', right: '0' }}>
+                {playbackRate.toFixed(1)}
+              </span>
             </p>
           </div>
         </div>
         <div style={{ display: 'flex', justifyContent: 'left' }}>
-          <div>
-            <input
-              type="text"
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-            />
-            <button onClick={handleOpenAICommunication}>发送</button>
-            <div style={{ marginTop: '10px' }}>
-              <textarea 
-                value={response}
-                readOnly
-                style={{
-                  width: '100%',
-                  minHeight: '100px',
-                  padding: '8px',
-                  resize: 'vertical'
-                }}
-                placeholder="OpenAI 回复将显示在这里..."
-              />
-            </div>
-          </div>
           <div>
             {/* 当既不是本地视频也不是网络视频时，显示视频输入选项 */}
             {!isLocalVideo && !isNetworkVideo && (
@@ -373,12 +441,12 @@ function App() {
       {/* 显示字幕列表使当前字幕自动滚动到可视范围内 */}
       <div className="subtitles" style={{ scrollPaddingTop: 'calc(3 * 1.5em)' }}>
         {subtitles.map((subtitle, index) => {
-          const isActive = currentSubtitleIndex == Number(subtitle.id); // 判断当前字幕是否为活跃字幕
+          const isActive = currentSubtitleIndex == Number(subtitle.id);
           return (
             <div
               key={index}
-              className={isActive ? (isRepeating ? 'active-subtitle-repeat' : 'active-subtitle') : ''} // 设置当前字幕的高亮样式
-              ref={isActive ? (el) => el && el.scrollIntoView({ behavior: 'smooth', block: 'start' }) : null} // 自动滚动到当前活跃字幕
+              className={isActive ? (isRepeating ? 'active-subtitle-repeat' : 'active-subtitle') : ''}
+              ref={isActive ? (el) => el && el.scrollIntoView({ behavior: 'smooth', block: 'start' }) : null}
               style={{ marginTop: index === 0 ? 'calc(3 * 1.5em)' : '0' }}
             >
               <p>{subtitle.id}  {subtitle.startSeconds} - {subtitle.text}</p>
@@ -387,6 +455,70 @@ function App() {
         })}
       </div>
 
+      {/* 添加上下文菜单 */}
+      {contextMenu.visible && (
+        <div 
+          className="context-menu"
+          style={{
+            position: 'fixed',
+            left: `${contextMenu.x}px`,
+            top: `${contextMenu.y}px`
+          }}
+        >
+          <div className="menu-item" onClick={() => handleMenuItemClick("Word_Dictionary")}>
+            <i className="fas fa-book"></i>
+            词典
+          </div>
+          <div className="menu-item" onClick={() => handleMenuItemClick("Word_Symbols")}>
+            <i className="fas fa-music"></i>
+            音标
+          </div>
+          <div className="menu-item" onClick={() => handleMenuItemClick("Word_More")}>
+            <i className="fas fa-ellipsis-h"></i>
+            更多
+          </div>
+          <div className="menu-item" onClick={() => handleMenuItemClick("Word_Etymology")}>
+            <i className="fas fa-history"></i>
+            词源
+          </div>
+          <div className="menu-item" onClick={() => handleMenuItemClick("Word_Example")}>
+            <i className="fas fa-quote-right"></i>
+            例句
+          </div>
+          <div className="menu-item" onClick={handleCustomClick}>
+            <i className="fas fa-cog"></i>
+            自定义
+          </div>
+        </div>
+      )}
+
+      {/* AI响应显示区域 */}
+      {showResponse && response && (
+        <div className="ai-response">
+          {response}
+        </div>
+      )}
+
+      {/* 添加自定义输入框 */}
+      {showCustomInput && (
+        <div className="custom-input-overlay">
+          <div className="custom-input-container">
+            <form onSubmit={handleCustomSubmit}>
+              <input
+                type="text"
+                value={customPrompt}
+                onChange={(e) => setCustomPrompt(e.target.value)}
+                placeholder={`关于 "${selectedWord}" 的自定义指令...`}
+                autoFocus
+              />
+              <div className="custom-input-buttons">
+                <button type="submit">确定</button>
+                <button type="button" onClick={() => setShowCustomInput(false)}>取消</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
