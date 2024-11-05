@@ -54,6 +54,29 @@ struct Choice {
     text: String,
 }
 
+#[derive(Clone, Serialize, Deserialize)]
+enum AssistantRole {
+    Word_Dictionary,
+    Word_More,
+    Word_Etymology,
+    Word_Example,
+    Word_Custom,
+    Word_Symbols,
+}
+
+impl AssistantRole {
+    fn get_system_prompt(&self) -> String {
+        match self {
+            AssistantRole::Word_Dictionary => "Provides parts of speech, Chinese translation and clear definition suitable for English learners less than 20 words. Output format: [part of speech],[Chinese translation],[definition]".to_string(),
+            AssistantRole::Word_Symbols => "Provide English and American pronunciation symbols. Output format: [English symbol],[American symbol]".to_string(),
+            AssistantRole::Word_More => "Provide one synonyms and additional notes about usage,including whether the word is formal, or used in specific contexts, less than 20 words. Output format: [synonym],[notes]".to_string(),
+            AssistantRole::Word_Etymology => "Provide etymology or origin, less than 20 words. Output format: [etymology or origin]".to_string(),
+            AssistantRole::Word_Example => "Provide one example sentences of less than 10 words. Output format: [example sentence]".to_string(),
+            AssistantRole::Word_Custom => "Provide results upon request briefly, less than 20 words. Choose the language of your reply for English learners.".to_string(),
+        }
+    }
+}
+
 #[tauri::command]
 async fn get_transcript(video: String) -> Vec<Subtitle> {
     let client = reqwest::Client::builder()
@@ -202,29 +225,43 @@ async fn fetch_video(video: String, digest: DigestScraper) -> Digest {
 }
 
 #[tauri::command]
-async fn communicate_with_openai(prompt: String) -> Result<String, String> {  
-
+async fn communicate_with_openai(prompt: String, role: AssistantRole) -> Result<String, String> {
     let auth = Auth::from_env().map_err(|e| format!("API密钥错误: {:?}", e))?;
     let openai = OpenAI::new(auth, "https://api.openai.com/v1/");
+    
     let body = ChatBody {
-        model: "gpt-4o-mini-2024-07-18".to_string(),
-        max_tokens: Some(100),
-        temperature: Some(0_f32),
-        top_p: Some(0_f32),
-        n: Some(2),
-        stream: Some(false),
-        stop: None,
-        presence_penalty: None,
-        frequency_penalty: None,
-        logit_bias: None,
-        user: None,
-        messages: vec![Message { role: Role::User, content: prompt }],
+        model: "gpt-4o-mini-2024-07-18".to_string(), // 使用 GPT-4o-mini 模型
+        max_tokens: Some(100),  // 设置最大令牌数
+        temperature: Some(0_f32), // 设置温度
+        top_p: Some(0_f32), // 设置 top_p
+        n: Some(2), // 设置生成结果数量
+        stream: Some(false), // 设置流式输出
+        stop: None, // 设置停止条件
+        presence_penalty: None, // 设置存在惩罚
+        frequency_penalty: None, // 设置频率惩罚
+        logit_bias: None, // 设置 logit 偏差
+        user: None, // 设置用户
+        messages: vec![
+            Message {
+                role: Role::System,
+                content: role.get_system_prompt()
+            },
+            Message {
+                role: Role::User,
+                content: prompt
+            }
+        ],
+        // ... 其他配置保持不变
     };
-    let rs = openai.chat_completion_create(&body);
-    let choice = rs.unwrap().choices;
-    let message = &choice[0].message.as_ref().unwrap();
-    Ok(message.content.clone())
+    let rs = openai.chat_completion_create(&body)
+        .map_err(|e| format!("OpenAI API 调用失败: {:?}", e))?;
 
+    let message = rs.choices
+        .first()
+        .and_then(|choice| choice.message.as_ref())
+        .ok_or("未收到有效的回复")?;
+
+    Ok(message.content.clone())
 }
 
 #[tauri::command]
