@@ -89,6 +89,13 @@ impl AssistantRole {
     }
 }
 
+#[derive(Serialize)]
+struct AIResponse {
+    content: String,
+    input_tokens: u32,
+    output_tokens: u32,
+}
+
 #[tauri::command]
 async fn get_transcript(video: String) -> Vec<Subtitle> {
     let client = reqwest::Client::builder()
@@ -237,22 +244,22 @@ async fn fetch_video(video: String, digest: DigestScraper) -> Digest {
 }
 
 #[tauri::command]
-async fn communicate_with_openai(prompt: String, role: AssistantRole) -> Result<String, String> {
+async fn communicate_with_openai(prompt: String, role: AssistantRole) -> Result<AIResponse, String> {
     let auth = Auth::from_env().map_err(|e| format!("API密钥错误: {:?}", e))?;
     let openai = OpenAI::new(auth, "https://api.openai.com/v1/");
     
     let body = ChatBody {
-        model: "gpt-4o-mini-2024-07-18".to_string(), // 使用 GPT-4o-mini 模型
-        max_tokens: Some(100),  // 设置最大令牌数
-        temperature: Some(0_f32), // 设置温度
-        top_p: Some(0_f32), // 设置 top_p
-        n: Some(2), // 设置生成结果数量
-        stream: Some(false), // 设置流式输出
-        stop: None, // 设置停止条件
-        presence_penalty: None, // 设置存在惩罚
-        frequency_penalty: None, // 设置频率惩罚
-        logit_bias: None, // 设置 logit 偏差
-        user: None, // 设置用户
+        model: "gpt-4o-mini-2024-07-18".to_string(),
+        max_tokens: Some(100),
+        temperature: Some(0_f32),
+        top_p: Some(0_f32),
+        n: Some(2),
+        stream: Some(false),
+        stop: None,
+        presence_penalty: None,
+        frequency_penalty: None,
+        logit_bias: None,
+        user: None,
         messages: vec![
             Message {
                 role: Role::System,
@@ -263,8 +270,8 @@ async fn communicate_with_openai(prompt: String, role: AssistantRole) -> Result<
                 content: prompt
             }
         ],
-        // ... 其他配置保持不变
     };
+    
     let rs = openai.chat_completion_create(&body)
         .map_err(|e| format!("OpenAI API 调用失败: {:?}", e))?;
 
@@ -273,7 +280,11 @@ async fn communicate_with_openai(prompt: String, role: AssistantRole) -> Result<
         .and_then(|choice| choice.message.as_ref())
         .ok_or("未收到有效的回复")?;
 
-    Ok(message.content.clone())
+    Ok(AIResponse {
+        content: message.content.clone(),
+        input_tokens: rs.usage.prompt_tokens.unwrap_or(0),
+        output_tokens: rs.usage.completion_tokens.unwrap_or(0),
+    })
 }
 
 #[tauri::command]
