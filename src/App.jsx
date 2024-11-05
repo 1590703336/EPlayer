@@ -33,6 +33,11 @@ function App() {
   const [customPrompt, setCustomPrompt] = useState("");  // 存储自定义输入内容
   const [response, setResponse] = useState(""); // 添加状态控制 OpenAI 回复
   const [isPlaying, setIsPlaying] = useState(true); // 添加新的状态来控制播放状态
+  const [aiStats, setAiStats] = useState({
+    callCount: 0,
+    inputTokens: 0,
+    outputTokens: 0
+  });
 
   // 获取应用版本号
   useEffect(() => {
@@ -192,7 +197,7 @@ function App() {
     }
   };
 
-  // 提取视频ID的函数（假设是 YouTube 视频）
+  // 提取视频ID的数（假设是 YouTube 视频）
   const extractVideoId = (url) => {
     // 处理短链接格式 youtu.be
     if (url.includes('youtu.be')) {
@@ -281,12 +286,18 @@ function App() {
         prompt: selectedWord,
         role: role 
       });
-      setResponse(result);
-      setShowResponse(true); // 显示响应窗口
+      
+      setAiStats(prev => ({
+        callCount: prev.callCount + 1,
+        inputTokens: prev.inputTokens + result.input_tokens,
+        outputTokens: prev.outputTokens + result.output_tokens
+      }));
+      
+      setResponse(result.content);
+      setShowResponse(true);
     } catch (error) {
       console.error("Error communicating with OpenAI:", error);
     }
-    // 隐藏菜单
     setContextMenu({ ...contextMenu, visible: false });
   };
 
@@ -315,20 +326,33 @@ function App() {
   const handleCustomSubmit = async (e) => {
     e.preventDefault();
     try {
-      // 简化提示格式为 "选中的词 指令"
       const combinedPrompt = `${selectedWord}的${customPrompt}`;
       const result = await invoke("communicate_with_openai", { 
         prompt: combinedPrompt,
         role: "Word_Custom" 
       });
-      setResponse(result);
+      
+      setAiStats(prev => ({
+        callCount: prev.callCount + 1,
+        inputTokens: prev.inputTokens + result.input_tokens,
+        outputTokens: prev.outputTokens + result.output_tokens
+      }));
+      
+      setResponse(result.content);
       setShowResponse(true);
-      setShowCustomInput(false);  // 隐藏输入框
-      setCustomPrompt("");  // 清空输入
+      setShowCustomInput(false);
+      setCustomPrompt("");
     } catch (error) {
       console.error("Error communicating with OpenAI:", error);
     }
   };
+
+  // 在 App 组件中添加计算费用的函数
+  function calculateCost(inputTokens, outputTokens) {
+    const inputCost = (inputTokens / 1000) * 0.00015;
+    const outputCost = (outputTokens / 1000) * 0.0006;
+    return (inputCost + outputCost).toFixed(6); // 保留4位小数
+  }
 
   return (
     <main className="container">
@@ -343,6 +367,13 @@ function App() {
         {showAboutMenu && (
           <div className="about-menu">
             <div className="menu-item">Version {appVersion}</div>
+            <div className="menu-item">
+              AI Stats:<br/>
+              Calls: {aiStats.callCount}<br/>
+              Input Tokens: {aiStats.inputTokens}<br/>
+              Output Tokens: {aiStats.outputTokens}<br/>
+              Total Cost: ${calculateCost(aiStats.inputTokens, aiStats.outputTokens)}
+            </div>
             <div className="menu-item" onClick={handleWebsiteClick}>Visit Website</div>
             <div className="menu-item" onClick={handleGuideClick}>User Guide</div>
           </div>
