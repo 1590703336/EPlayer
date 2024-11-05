@@ -254,23 +254,22 @@ function App() {
     const selectedText = selection.toString().trim();
     
     if (selectedText) {
-      // 阻止默认的上下文菜单
       event.preventDefault();
       
-      // 获取选中文本的位置
       const range = selection.getRangeAt(0);
       const rect = range.getBoundingClientRect();
       
-      // 设置选中的词和菜单位置
+      // 检查选中的文本是否包含多个词
+      const isMultipleWords = selectedText.split(/\s+/).length > 1;
+      
       setSelectedWord(selectedText);
       setContextMenu({
         visible: true,
         x: rect.left,
-        // 将菜单放置在选中文本的上方，减去菜单的预估高度（约50px）和一些间距（10px）
-        y: rect.top - 60
+        y: rect.top - 60,
+        isMultipleWords: isMultipleWords // 添加新的属性来标识是否是多个词
       });
     } else {
-      // 如果没有选中文本，隐藏菜单
       setContextMenu({ ...contextMenu, visible: false });
     }
   };
@@ -465,30 +464,63 @@ function App() {
             top: `${contextMenu.y}px`
           }}
         >
-          <div className="menu-item" onClick={() => handleMenuItemClick("Word_Dictionary")}>
-            <i className="fas fa-book"></i>
-            词典
-          </div>
-          <div className="menu-item" onClick={() => handleMenuItemClick("Word_Symbols")}>
-            <i className="fas fa-music"></i>
-            音标
-          </div>
-          <div className="menu-item" onClick={() => handleMenuItemClick("Word_More")}>
-            <i className="fas fa-ellipsis-h"></i>
-            更多
-          </div>
-          <div className="menu-item" onClick={() => handleMenuItemClick("Word_Etymology")}>
-            <i className="fas fa-history"></i>
-            词源
-          </div>
-          <div className="menu-item" onClick={() => handleMenuItemClick("Word_Example")}>
-            <i className="fas fa-quote-right"></i>
-            例句
-          </div>
-          <div className="menu-item" onClick={handleCustomClick}>
-            <i className="fas fa-cog"></i>
-            自定义
-          </div>
+          {contextMenu.isMultipleWords ? (
+            // 多词菜单选项
+            <>
+              <div className="menu-item" onClick={() => handleMenuItemClick("Sentence_Translation")}>
+                <i className="fas fa-language"></i>
+                翻译
+              </div>
+              <div className="menu-item" onClick={() => handleMenuItemClick("Sentence_Structure")}>
+                <i className="fas fa-project-diagram"></i>
+                结构拆分
+              </div>
+              <div className="menu-item" onClick={() => handleMenuItemClick("Sentence_Copy")}>
+                <i className="fas fa-copy"></i>
+                仿写
+              </div>
+              <div className="menu-item" onClick={() => handleMenuItemClick("Sentence_Example")}>
+                <i className="fas fa-quote-right"></i>
+                例句
+              </div>
+              <div className="menu-item" onClick={() => handleMenuItemClick("Sentence_Transform")}>
+                <i className="fas fa-random"></i>
+                转换
+              </div>
+              <div className="menu-item" onClick={handleCustomClick}>
+                <i className="fas fa-cog"></i>
+                自定义
+              </div>
+            </>
+          ) : (
+            // 单词菜单选项
+            <>
+              <div className="menu-item" onClick={() => handleMenuItemClick("Word_Dictionary")}>
+                <i className="fas fa-book"></i>
+                词典
+              </div>
+              <div className="menu-item" onClick={() => handleMenuItemClick("Word_Symbols")}>
+                <i className="fas fa-music"></i>
+                音标
+              </div>
+              <div className="menu-item" onClick={() => handleMenuItemClick("Word_More")}>
+                <i className="fas fa-ellipsis-h"></i>
+                更多
+              </div>
+              <div className="menu-item" onClick={() => handleMenuItemClick("Word_Etymology")}>
+                <i className="fas fa-history"></i>
+                词源
+              </div>
+              <div className="menu-item" onClick={() => handleMenuItemClick("Word_Example")}>
+                <i className="fas fa-quote-right"></i>
+                例句
+              </div>
+              <div className="menu-item" onClick={handleCustomClick}>
+                <i className="fas fa-cog"></i>
+                自定义
+              </div>
+            </>
+          )}
         </div>
       )}
 

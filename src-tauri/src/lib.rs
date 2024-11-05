@@ -62,6 +62,12 @@ enum AssistantRole {
     Word_Example,
     Word_Custom,
     Word_Symbols,
+    Sentence_Translation,
+    Sentence_Structure,
+    Sentence_Copy,
+    Sentence_Example,
+    Sentence_Transform,
+    Sentence_Custom,
 }
 
 impl AssistantRole {
@@ -73,6 +79,12 @@ impl AssistantRole {
             AssistantRole::Word_Etymology => "Provide etymology or origin, less than 20 words. Output format: [etymology or origin]".to_string(),
             AssistantRole::Word_Example => "Provide one example sentences of less than 10 words. Output format: [example sentence]".to_string(),
             AssistantRole::Word_Custom => "Provide results upon request briefly, less than 20 words. Choose the language of your reply for English learners.".to_string(),
+            AssistantRole::Sentence_Translation => "Provide a clear, concise Chinese translation of the text, less than 20 words. Output format: [translation]".to_string(),
+            AssistantRole::Sentence_Structure => "Provide a breakdown of the grammatical structure, identifying key parts like the subject, verb, and object. Output format: [structure]".to_string(),
+            AssistantRole::Sentence_Copy => "Provide one similar expressions, less than 20 words. Output format: [similar expressions]".to_string(),
+            AssistantRole::Sentence_Example => "Provide one example sentences or phrases for the content, in less than 15 words. Output format: [example sentence]".to_string(),
+            AssistantRole::Sentence_Transform => "Provide a transformation of the sentence, like formal, informal, or suitable for specific situations,less than 30 words. Output format: [transformation]".to_string(),
+            AssistantRole::Sentence_Custom => "Provide results upon request briefly, less than 20 words. Choose the language of your reply for English learners.".to_string(),
         }
     }
 }
