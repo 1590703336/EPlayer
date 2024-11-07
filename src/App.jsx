@@ -43,7 +43,7 @@ function App() {
   const [audioUrl, setAudioUrl] = useState("");
   const [isGeneratingSubtitles, setIsGeneratingSubtitles] = useState(false);
   const [uploadedFile, setUploadedFile] = useState(null);
-  const [aiSubtitleStats, setAiSubtitleStats] = useState({
+  const [whisperStats, setWhisperStats] = useState({
     callCount: 0,
     totalDuration: 0
   });
@@ -158,7 +158,7 @@ function App() {
     };
   }, [subtitles, currentSubtitleIndex]); // 确保依赖项包括 currentSubtitleIndex
 
-  // 处理当前播放时间的变化来更新当前��字幕索引
+  // 处理当前播放时间的变化来更新当前的字幕索引
   useEffect(() => {
     if (isRepeating && subtitles.length > 0) {
       const currentSubtitle = subtitles[currentSubtitleIndex - 1]; // 获取当前字幕
@@ -378,12 +378,12 @@ function App() {
     return (inputCost + outputCost).toFixed(6); // 保留4位小数
   }
 
-  // 在 App 组件中添加计算费用的函数
-  function calculateWhisperCost(totalDuration) {
-    return (totalDuration / 60 * 0.006).toFixed(6); // 保留4位小数
+  function calculateTotalDuration(totalDuration) {
+    const totalMinutes = totalDuration / 60;  //每分钟0.006美元
+    return totalMinutes.toFixed(2);
   }
 
-  // 修改 generateAISubtitles 函数
+  // 添加生成 AI 字幕的函数
   const generateAISubtitles = async () => {
     if (!uploadedFile) {
       console.error('没有上传文件');
@@ -404,19 +404,15 @@ function App() {
       });
       console.log('音频转写完成:', result);
       
-      if (!result || !result.subtitles) {
-        throw new Error('转写结果无效');
-      }
-      
-      setAiSubtitleStats(prev => ({
+      // 更新统计信息
+      setWhisperStats(prev => ({
         callCount: prev.callCount + 1,
-        totalDuration: prev.totalDuration + (result.duration || 0)
+        totalDuration: prev.totalDuration + result.duration
       }));
       
       setSubtitles(result.subtitles);
     } catch (error) {
       console.error('生成字幕失败:', error);
-      // 可以添加一个提示给用户
       alert('生成字幕失败: ' + error.message);
     } finally {
       setIsGeneratingSubtitles(false);
@@ -438,15 +434,16 @@ function App() {
             <div className="menu-item">Version {appVersion}</div>
             <div className="menu-item">
               AI Stats:<br/>
-              Calls: {aiStats.callCount}<br/>
+              Use Times: {aiStats.callCount}<br/>
               Input Tokens: {aiStats.inputTokens}<br/>
               Output Tokens: {aiStats.outputTokens}<br/>
               Total Cost: ${calculateCost(aiStats.inputTokens, aiStats.outputTokens)}<br/>
               <br/>
               Whisper Stats:<br/>
-              Use Times: {aiSubtitleStats.callCount}<br/>
-              Total Duration: {(aiSubtitleStats.totalDuration / 60).toFixed(2)} minutes<br/>
-              Total Cost: ${calculateWhisperCost(aiSubtitleStats.totalDuration)}
+              Use Times: {whisperStats.callCount}<br/>
+              Total Duration: {calculateTotalDuration(whisperStats.totalDuration)} minutes
+              <br/>
+              Total Cost: ${calculateTotalDuration(whisperStats.totalDuration) * 0.006}
             </div>
             <div className="menu-item" onClick={handleWebsiteClick}>Visit Website</div>
             <div className="menu-item" onClick={handleGuideClick}>User Guide</div>

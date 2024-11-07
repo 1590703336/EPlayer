@@ -14,6 +14,7 @@ use std::path::Path;
 use base64::encode;
 use std::io::Read;
 use uuid::Uuid;
+use std::path::PathBuf;
 
 const LANGUAGES: [&'static str; 8] = ["en", "zh-TW", "ja", "zh-Hant", "ko", "zh", "es", "fr"];  //英语、繁体中文、日语、韩语、简体中文、西班牙语、法语
 
@@ -99,12 +100,6 @@ struct AIResponse {
     content: String,
     input_tokens: u32,
     output_tokens: u32,
-}
-
-#[derive(Serialize)]
-pub struct TranscriptionResult {
-    subtitles: Vec<Subtitle>,
-    duration: f64,  // 添加音频时长字段
 }
 
 #[tauri::command]
@@ -203,7 +198,7 @@ async fn get_transcript(video: String) -> Vec<Subtitle> {
 
         merged_subtitles
     } else {
-        // 如果��有换行符，直接返回原始字幕
+        // 如果没有换行符，直接返回原始字幕
         subtitles
     }
 }
@@ -306,84 +301,103 @@ fn greet(name: &str) -> String {
 #[tauri::command]
 async fn extract_audio(video_path: String) -> Result<String, String> {
     let ffmpeg_path = get_ffmpeg_path()?;
-    println!("接收到的数据前缀: {}", &video_path[..50]);
     
-    // 使用简短的临文件名
-    let temp_input = format!("in_{}.mp4", Uuid::new_v4().simple());
+    // 使用系统临时目录
+    let temp_dir = std::env::temp_dir();
+    let uuid = Uuid::new_v4();
     
+    // 创建临时文件路径
+    let temp_input = temp_dir.join(format!("input_{}.mp4", uuid));
+    let temp_output = temp_dir.join(format!("output_{}.mp3", uuid));
+
+    // 将路径转换为字符串
+    let temp_input_str = temp_input.to_string_lossy().to_string();
+    let temp_output_str = temp_output.to_string_lossy().to_string();
+
+    println!("输入文件路径: {}", temp_input_str);
+    println!("输出文件路径: {}", temp_output_str);
+
     if video_path.starts_with("data:") {
         let base64_data = video_path.split("base64,").nth(1)
             .ok_or("无效的data URL格式")?;
             
-        // 解码base64数据
         let video_data = base64::decode(base64_data)
             .map_err(|e| format!("base64解码失败: {}", e))?;
             
-        // 写入临时文件
+        // 使用 PathBuf 的路径写入文件
         std::fs::write(&temp_input, video_data)
             .map_err(|e| format!("写入临时文件失败: {}", e))?;
     } else {
-        // 如果是文件路径，直接使用
-        std::fs::copy(&video_path, &temp_input)
-            .map_err(|e| format!("复制文件失败: {}", e))?;
+        return Err("不支持的视频格式".to_string());
     }
 
-    let output = Command::new(ffmpeg_path)
+    // 执行 ffmpeg 命令，不需要手动添加引号
+    let output = Command::new(&ffmpeg_path)
         .args(&[
-            "-i", &temp_input,
+            "-i",
+            &temp_input_str,  // 直接使用路径字符串
             "-vn",
-            "-acodec", "mp3",
-            "-f", "mp3",
-            "out.mp3"
+            "-acodec",
+            "mp3",
+            "-f",
+            "mp3",
+            &temp_output_str  // 直接使用路径字符串
         ])
         .output()
         .map_err(|e| format!("ffmpeg执行失败: {}", e))?;
 
-    // 清理临时文件
-    let _ = std::fs::remove_file(&temp_input);
-
+    // 检查命令执行结果
     if !output.status.success() {
         let error = String::from_utf8_lossy(&output.stderr);
         return Err(format!("音频提取失败: {}", error));
     }
 
     // 读取输出文件
-    let mut file = std::fs::File::open("out.mp3")
+    let mut file = std::fs::File::open(&temp_output)
         .map_err(|e| format!("无法读取输出文件: {}", e))?;
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer)
         .map_err(|e| format!("读取文件失败: {}", e))?;
 
-    // 清理输出文件
-    let _ = std::fs::remove_file("out.mp3");
+    // 清理临时文件
+    let _ = std::fs::remove_file(&temp_input);
+    let _ = std::fs::remove_file(&temp_output);
 
     // 转换为base64
-    let base64_audio = encode(&buffer);
+    let base64_audio = base64::encode(&buffer);
     Ok(format!("data:audio/mp3;base64,{}", base64_audio))
 }
 
 fn get_ffmpeg_path() -> Result<String, String> {
     #[cfg(target_os = "windows")]
     {
-        let ffmpeg = "ffmpeg.exe";
-        if let Ok(output) = Command::new("where").arg(ffmpeg).output() {
-            if output.status.success() {
-                return Ok(String::from_utf8_lossy(&output.stdout).trim().to_string());
-            }
+        let output = Command::new("where")
+            .arg("ffmpeg.exe")
+            .output()
+            .map_err(|_| "找不到 ffmpeg，请确保已安装并添加到系统 PATH 中".to_string())?;
+
+        if output.status.success() {
+            let path = String::from_utf8_lossy(&output.stdout);
+            Ok(path.lines().next().unwrap_or("ffmpeg.exe").trim().to_string())
+        } else {
+            Err("找不到 ffmpeg，请确保已安装并添加到系统 PATH 中".to_string())
         }
     }
 
     #[cfg(not(target_os = "windows"))]
     {
-        let ffmpeg = "ffmpeg";
-        if let Ok(output) = Command::new("which").arg(ffmpeg).output() {
-            if output.status.success() {
-                return Ok(String::from_utf8_lossy(&output.stdout).trim().to_string());
-            }
+        let output = Command::new("which")
+            .arg("ffmpeg")
+            .output()
+            .map_err(|_| "找不到 ffmpeg，请确保已安装并添加到系统 PATH 中".to_string())?;
+
+        if output.status.success() {
+            let path = String::from_utf8_lossy(&output.stdout);
+            Ok(path.trim().to_string())
+        } else {
+            Err("找不到 ffmpeg，请确保已安装并添加到系统 PATH 中".to_string())
         }
     }
-
-    Err("找不到ffmpeg，请确保已安装并添加到系统PATH中".to_string())
 }
 
 #[derive(Serialize, Deserialize)]
@@ -397,6 +411,12 @@ struct WhisperSegment {
     start: f64,
     end: f64,
     text: String,
+}
+
+#[derive(Serialize)]
+struct TranscriptionResult {
+    subtitles: Vec<Subtitle>,
+    duration: f64,  // 添加音频时长字段
 }
 
 #[tauri::command]
@@ -439,23 +459,23 @@ async fn transcribe_audio(audio_base64: String) -> Result<TranscriptionResult, S
         .await
         .map_err(|e| format!("解析响应失败: {}", e))?;
 
-    // 计算音频时长（从最后一个片段的结束时间获取）
-    let duration = whisper_response.segments
-        .last()
-        .map(|segment| segment.end)
-        .unwrap_or(0.0);
-
     // 将Whisper响应转换为字幕格式
     let subtitles: Vec<Subtitle> = whisper_response.segments
-        .into_iter()
+        .iter()
         .enumerate()
         .map(|(i, segment)| Subtitle {
             id: (i + 1) as u32,
-            text: segment.text,
+            text: segment.text.clone(),
             startSeconds: segment.start,
             endSeconds: segment.end,
         })
         .collect();
+
+    // 计算总时长（使用最后一个片段的结束时间）
+    let duration = whisper_response.segments
+        .last()
+        .map(|segment| segment.end)
+        .unwrap_or(0.0);
 
     Ok(TranscriptionResult {
         subtitles,
