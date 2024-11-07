@@ -101,6 +101,12 @@ struct AIResponse {
     output_tokens: u32,
 }
 
+#[derive(Serialize)]
+pub struct TranscriptionResult {
+    subtitles: Vec<Subtitle>,
+    duration: f64,  // 添加音频时长字段
+}
+
 #[tauri::command]
 async fn get_transcript(video: String) -> Vec<Subtitle> {
     let client = reqwest::Client::builder()
@@ -197,7 +203,7 @@ async fn get_transcript(video: String) -> Vec<Subtitle> {
 
         merged_subtitles
     } else {
-        // 如果没有换行符，直接返回原始字幕
+        // 如果��有换行符，直接返回原始字幕
         subtitles
     }
 }
@@ -394,7 +400,7 @@ struct WhisperSegment {
 }
 
 #[tauri::command]
-async fn transcribe_audio(audio_base64: String) -> Result<Vec<Subtitle>, String> {
+async fn transcribe_audio(audio_base64: String) -> Result<TranscriptionResult, String> {
     let auth = Auth::from_env().map_err(|e| format!("API密钥错误: {:?}", e))?;
     let client = reqwest::Client::new();
 
@@ -433,6 +439,12 @@ async fn transcribe_audio(audio_base64: String) -> Result<Vec<Subtitle>, String>
         .await
         .map_err(|e| format!("解析响应失败: {}", e))?;
 
+    // 计算音频时长（从最后一个片段的结束时间获取）
+    let duration = whisper_response.segments
+        .last()
+        .map(|segment| segment.end)
+        .unwrap_or(0.0);
+
     // 将Whisper响应转换为字幕格式
     let subtitles: Vec<Subtitle> = whisper_response.segments
         .into_iter()
@@ -445,7 +457,10 @@ async fn transcribe_audio(audio_base64: String) -> Result<Vec<Subtitle>, String>
         })
         .collect();
 
-    Ok(subtitles)
+    Ok(TranscriptionResult {
+        subtitles,
+        duration,
+    })
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
