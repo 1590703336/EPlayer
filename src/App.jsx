@@ -9,6 +9,7 @@ import { open } from '@tauri-apps/plugin-shell';  // 导入 open 函数用于打
 import { getVersion } from '@tauri-apps/api/app';  // 导入获取版本号的函数
 import guideImage1 from './assets/guide1.png';
 
+
 function App() {
   // 定义各种状态变量来存储视频文件路径、字幕、当前播放时间、字幕索引、播放速度等
   const [videoUrl, setVideoUrl] = useState(""); // 用于存储视频文件路径
@@ -29,7 +30,7 @@ function App() {
   const [selectedWord, setSelectedWord] = useState(""); // 存储选中的词
   const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0 }); // 控制上下文菜单
   const [showResponse, setShowResponse] = useState(false); // 添加新的状态控制 AI 响应窗口的显示
-  const [showCustomInput, setShowCustomInput] = useState(false);  // 控制自定义输入框显示
+  const [showCustomInput, setShowCustomInput] = useState(false);  // 控制自定���输入框显示
   const [customPrompt, setCustomPrompt] = useState("");  // 存储自定义输入内容
   const [response, setResponse] = useState(""); // 添加状态控制 OpenAI 回复
   const [isPlaying, setIsPlaying] = useState(true); // 添加新的状态来控制播放状态
@@ -38,6 +39,8 @@ function App() {
     inputTokens: 0,
     outputTokens: 0
   });
+  const [isExtracting, setIsExtracting] = useState(false);
+  const [audioUrl, setAudioUrl] = useState("");
 
   // 获取应用版本号
   useEffect(() => {
@@ -214,13 +217,43 @@ function App() {
   };
 
   // 处理本地视频文件上传
-  const handleLocalVideoUpload = (e) => {
-    const file = e.target.files[0]; // 获取上传的文件对象
+  const handleLocalVideoUpload = async (event) => {
+    const file = event.target.files[0];
     if (file) {
-      setVideoUrl(URL.createObjectURL(file)); // 创建视频文件的 URL 并设置为视频路径
-      setIsLocalVideo(true); // 标记为本地视频
-      setIsNetworkVideo(false); // 标记不是网络视频
+      setIsExtracting(true);
+      try {
+        // 提取音频
+        const audioData = await invoke('extract_audio', { 
+          videoPath: await fileToBase64(file) 
+        });
+        
+        // 转写音频
+        const subtitles = await invoke('transcribe_audio', { 
+          audioBase64: audioData 
+        });
+        
+        // 设置字幕
+        setSubtitles(subtitles);
+        setVideoUrl(URL.createObjectURL(file));
+        setIsLocalVideo(true);
+        setIsNetworkVideo(false);
+        
+      } catch (error) {
+        console.error('处理失败:', error);
+      } finally {
+        setIsExtracting(false);
+      }
     }
+  };
+
+  // 辅助函数：将文件转换为base64
+  const fileToBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = (error) => reject(error);
+    });
   };
 
   // 重置到初始状态（主页）
@@ -354,7 +387,7 @@ function App() {
   function calculateCost(inputTokens, outputTokens) {
     const inputCost = (inputTokens / 1000) * 0.00015;
     const outputCost = (outputTokens / 1000) * 0.0006;
-    return (inputCost + outputCost).toFixed(6); // 保留4位小数
+    return (inputCost + outputCost).toFixed(6); // 保留4位小��
   }
 
   return (
@@ -414,6 +447,13 @@ function App() {
             progressInterval={100} // 每 100 毫秒更新播放进度
             playbackRate={playbackRate} // 设置播放速度
           />
+          {audioUrl && (
+            <div className="audio-player">
+              <audio controls src={audioUrl}>
+                您的浏览器不支持音频播放器
+              </audio>
+            </div>
+          )}
           <div className="subtitle-overlay">
             <p 
               style={{ display: 'flex', justifyContent: 'center', position: 'relative' }}
@@ -445,13 +485,15 @@ function App() {
                 </form>
 
                 <div className="file-input-wrapper">
-                  <label htmlFor="local-video-input">Select local video file:</label>  {/* 注释：选择本地视频文件 */}
-                  <input style={{ width: 150 }}
+                  <label htmlFor="local-video-input">Select local video file:</label>
+                  <input 
                     id="local-video-input"
                     type="file"
                     accept="video/*"
                     onChange={handleLocalVideoUpload}
+                    disabled={isExtracting}
                   />
+                  {isExtracting && <span className="extracting-status">正在提取音频...</span>}
                 </div>
               </>
             )}

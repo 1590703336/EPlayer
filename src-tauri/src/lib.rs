@@ -9,6 +9,11 @@ use youtube_captions::{CaptionScraper, Digest, DigestScraper};
 use openai_api_rust::*;
 use openai_api_rust::chat::*;
 use openai_api_rust::completions::*;
+use std::process::Command;
+use std::path::Path;
+use base64::encode;
+use std::io::Read;
+use uuid::Uuid;
 
 const LANGUAGES: [&'static str; 8] = ["en", "zh-TW", "ja", "zh-Hant", "ko", "zh", "es", "fr"];  //英语、繁体中文、日语、韩语、简体中文、西班牙语、法语
 
@@ -292,13 +297,170 @@ fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
 }
 
+#[tauri::command]
+async fn extract_audio(video_path: String) -> Result<String, String> {
+    let ffmpeg_path = get_ffmpeg_path()?;
+    println!("接收到的数据前缀: {}", &video_path[..50]);
+    
+    // 使用简短的临文件名
+    let temp_input = format!("in_{}.mp4", Uuid::new_v4().simple());
+    
+    if video_path.starts_with("data:") {
+        let base64_data = video_path.split("base64,").nth(1)
+            .ok_or("无效的data URL格式")?;
+            
+        // 解码base64数据
+        let video_data = base64::decode(base64_data)
+            .map_err(|e| format!("base64解码失败: {}", e))?;
+            
+        // 写入临时文件
+        std::fs::write(&temp_input, video_data)
+            .map_err(|e| format!("写入临时文件失败: {}", e))?;
+    } else {
+        // 如果是文件路径，直接使用
+        std::fs::copy(&video_path, &temp_input)
+            .map_err(|e| format!("复制文件失败: {}", e))?;
+    }
+
+    let output = Command::new(ffmpeg_path)
+        .args(&[
+            "-i", &temp_input,
+            "-vn",
+            "-acodec", "mp3",
+            "-f", "mp3",
+            "out.mp3"
+        ])
+        .output()
+        .map_err(|e| format!("ffmpeg执行失败: {}", e))?;
+
+    // 清理临时文件
+    let _ = std::fs::remove_file(&temp_input);
+
+    if !output.status.success() {
+        let error = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("音频提取失败: {}", error));
+    }
+
+    // 读取输出文件
+    let mut file = std::fs::File::open("out.mp3")
+        .map_err(|e| format!("无法读取输出文件: {}", e))?;
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer)
+        .map_err(|e| format!("读取文件失败: {}", e))?;
+
+    // 清理输出文件
+    let _ = std::fs::remove_file("out.mp3");
+
+    // 转换为base64
+    let base64_audio = encode(&buffer);
+    Ok(format!("data:audio/mp3;base64,{}", base64_audio))
+}
+
+fn get_ffmpeg_path() -> Result<String, String> {
+    #[cfg(target_os = "windows")]
+    {
+        let ffmpeg = "ffmpeg.exe";
+        if let Ok(output) = Command::new("where").arg(ffmpeg).output() {
+            if output.status.success() {
+                return Ok(String::from_utf8_lossy(&output.stdout).trim().to_string());
+            }
+        }
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        let ffmpeg = "ffmpeg";
+        if let Ok(output) = Command::new("which").arg(ffmpeg).output() {
+            if output.status.success() {
+                return Ok(String::from_utf8_lossy(&output.stdout).trim().to_string());
+            }
+        }
+    }
+
+    Err("找不到ffmpeg，请确保已安装并添加到系统PATH中".to_string())
+}
+
+#[derive(Serialize, Deserialize)]
+struct WhisperResponse {
+    text: String,
+    segments: Vec<WhisperSegment>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct WhisperSegment {
+    start: f64,
+    end: f64,
+    text: String,
+}
+
+#[tauri::command]
+async fn transcribe_audio(audio_base64: String) -> Result<Vec<Subtitle>, String> {
+    let auth = Auth::from_env().map_err(|e| format!("API密钥错误: {:?}", e))?;
+    let client = reqwest::Client::new();
+
+    // 从base64中提取实际的音频数据
+    let audio_data = audio_base64
+        .split("base64,")
+        .nth(1)
+        .ok_or("无效的音频数据格式")?;
+    
+    let audio_bytes = base64::decode(audio_data)
+        .map_err(|e| format!("解码音频数据失败: {}", e))?;
+
+    // 创建multipart form
+    let form = reqwest::multipart::Form::new()
+        .part("file", reqwest::multipart::Part::bytes(audio_bytes)
+            .file_name("audio.mp3")
+            .mime_str("audio/mp3")
+            .map_err(|e| format!("创建表单失败: {}", e))?)
+        .text("model", "whisper-1")
+        .text("language", "zh")
+        .text("response_format", "verbose_json")  // 请求详细的JSON响应
+        .text("timestamp_granularities", "segment");  // 请求分段时间戳
+
+    // 发送请求到Whisper API
+    let response = client
+        .post("https://api.openai.com/v1/audio/transcriptions")
+        .header("Authorization", format!("Bearer {}", auth.api_key))
+        .multipart(form)
+        .send()
+        .await
+        .map_err(|e| format!("API请求失败: {}", e))?;
+
+    // 解析响应
+    let whisper_response = response
+        .json::<WhisperResponse>()
+        .await
+        .map_err(|e| format!("解析响应失败: {}", e))?;
+
+    // 将Whisper响应转换为字幕格式
+    let subtitles: Vec<Subtitle> = whisper_response.segments
+        .into_iter()
+        .enumerate()
+        .map(|(i, segment)| Subtitle {
+            id: (i + 1) as u32,
+            text: segment.text,
+            startSeconds: segment.start,
+            endSeconds: segment.end,
+        })
+        .collect();
+
+    Ok(subtitles)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()        
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_shell::init())
-        .invoke_handler(tauri::generate_handler![greet, get_transcript, communicate_with_openai])
+        .invoke_handler(tauri::generate_handler![
+            greet, 
+            get_transcript, 
+            communicate_with_openai,
+            extract_audio,
+            transcribe_audio  // 添加新命令
+        ])
         .plugin(tauri_plugin_log::Builder::new().build())
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
