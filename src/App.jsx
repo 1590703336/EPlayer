@@ -30,7 +30,7 @@ function App() {
   const [selectedWord, setSelectedWord] = useState(""); // 存储选中的词
   const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0 }); // 控制上下文菜单
   const [showResponse, setShowResponse] = useState(false); // 添加新的状态控制 AI 响应窗口的显示
-  const [showCustomInput, setShowCustomInput] = useState(false);  // 控制自定���输入框显示
+  const [showCustomInput, setShowCustomInput] = useState(false);  // 控制自定输入框显示
   const [customPrompt, setCustomPrompt] = useState("");  // 存储自定义输入内容
   const [response, setResponse] = useState(""); // 添加状态控制 OpenAI 回复
   const [isPlaying, setIsPlaying] = useState(true); // 添加新的状态来控制播放状态
@@ -41,6 +41,8 @@ function App() {
   });
   const [isExtracting, setIsExtracting] = useState(false);
   const [audioUrl, setAudioUrl] = useState("");
+  const [isGeneratingSubtitles, setIsGeneratingSubtitles] = useState(false);
+  const [uploadedFile, setUploadedFile] = useState(null);
 
   // 获取应用版本号
   useEffect(() => {
@@ -220,29 +222,11 @@ function App() {
   const handleLocalVideoUpload = async (event) => {
     const file = event.target.files[0];
     if (file) {
-      setIsExtracting(true);
-      try {
-        // 提取音频
-        const audioData = await invoke('extract_audio', { 
-          videoPath: await fileToBase64(file) 
-        });
-        
-        // 转写音频
-        const subtitles = await invoke('transcribe_audio', { 
-          audioBase64: audioData 
-        });
-        
-        // 设置字幕
-        setSubtitles(subtitles);
-        setVideoUrl(URL.createObjectURL(file));
-        setIsLocalVideo(true);
-        setIsNetworkVideo(false);
-        
-      } catch (error) {
-        console.error('处理失败:', error);
-      } finally {
-        setIsExtracting(false);
-      }
+      setUploadedFile(file);  // 保存文件
+      setVideoUrl(URL.createObjectURL(file));
+      setIsLocalVideo(true);
+      setIsNetworkVideo(false);
+      setIsPlaying(true);  // 直接开始播放
     }
   };
 
@@ -387,8 +371,35 @@ function App() {
   function calculateCost(inputTokens, outputTokens) {
     const inputCost = (inputTokens / 1000) * 0.00015;
     const outputCost = (outputTokens / 1000) * 0.0006;
-    return (inputCost + outputCost).toFixed(6); // 保留4位小��
+    return (inputCost + outputCost).toFixed(6); // 保留4位小数
   }
+
+  // 添加生成 AI 字幕的函数
+  const generateAISubtitles = async () => {
+    if (!uploadedFile) {
+      console.error('没有上传文件');
+      return;
+    }
+
+    setIsGeneratingSubtitles(true);
+    try {
+      // 提取音频
+      const audioData = await invoke('extract_audio', { 
+        videoPath: await fileToBase64(uploadedFile) 
+      });
+      
+      // 转写音频
+      const subtitles = await invoke('transcribe_audio', { 
+        audioBase64: audioData 
+      });
+      
+      setSubtitles(subtitles);
+    } catch (error) {
+      console.error('生成字幕失败:', error);
+    } finally {
+      setIsGeneratingSubtitles(false);
+    }
+  };
 
   return (
     <main className="container">
@@ -468,6 +479,25 @@ function App() {
               </span>
             </p>
           </div>
+          {isLocalVideo && !subtitles.length && (
+            <button 
+              className="ai-subtitle-button"
+              onClick={generateAISubtitles}
+              disabled={isGeneratingSubtitles}
+            >
+              {isGeneratingSubtitles ? (
+                <>
+                  <div className="loading-spinner" />
+                  生成字幕中...
+                </>
+              ) : (
+                <>
+                  <i className="fas fa-closed-captioning" />
+                  生成 AI 字幕
+                </>
+              )}
+            </button>
+          )}
         </div>
         <div style={{ display: 'flex', justifyContent: 'left' }}>
           <div>
