@@ -120,13 +120,15 @@ function App() {
         if (playerRef.current) {
           playerRef.current.seekTo(startTime, 'seconds'); // 跳转到上一句字幕的开始时间           
         }
+        setCurrentSubtitleIndex(newIndex); // 更新当前字幕索引
       } else if (event.key === 'ArrowRight') {
         // 切换到下一句字幕
         const newIndex = Math.min(currentSubtitleIndex + 1, subtitles.length - 1); // 确保索引不超过字幕长度
         const startTime = subtitles[newIndex - 1]?.startSeconds; // 获取下一句字幕的开始时间
         if (playerRef.current) {
           playerRef.current.seekTo(startTime, 'seconds'); // 跳转到下一句字幕的开始时间
-        }
+        }        
+        setCurrentSubtitleIndex(newIndex); // 更新当前字幕索引
       } else if (event.key === 'r') {
         // 切换重复播放当前句子的状态
         setIsRepeating((prev) => !prev); // 切换 isRepeating 状态
@@ -151,6 +153,7 @@ function App() {
   useEffect(() => {
     if (isRepeating && subtitles.length > 0) {
       const currentSubtitle = subtitles[currentSubtitleIndex - 1]; // 获取当前字幕
+      console.log(currentSubtitle);
       if (currentSubtitle) {
         const { startSeconds, endSeconds } = currentSubtitle;
         if (currentTime >= endSeconds) { // 如果当前时间超过了字幕的结束时间
