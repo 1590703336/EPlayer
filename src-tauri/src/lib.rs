@@ -420,7 +420,7 @@ struct TranscriptionResult {
 }
 
 #[tauri::command]
-async fn transcribe_audio(audio_base64: String) -> Result<TranscriptionResult, String> {
+async fn transcribe_audio(audio_base64: String, language: String) -> Result<TranscriptionResult, String> {
     let auth = Auth::from_env().map_err(|e| format!("API密钥错误: {:?}", e))?;
     let client = reqwest::Client::new();
 
@@ -440,9 +440,9 @@ async fn transcribe_audio(audio_base64: String) -> Result<TranscriptionResult, S
             .mime_str("audio/mp3")
             .map_err(|e| format!("创建表单失败: {}", e))?)
         .text("model", "whisper-1")
-        .text("language", "zh")
-        .text("response_format", "verbose_json")  // 请求详细的JSON响应
-        .text("timestamp_granularities", "segment");  // 请求分段时间戳
+        .text("language", language)
+        .text("response_format", "verbose_json")
+        .text("timestamp_granularities", "segment");
 
     // 发送请求到Whisper API
     let response = client
@@ -483,6 +483,151 @@ async fn transcribe_audio(audio_base64: String) -> Result<TranscriptionResult, S
     })
 }
 
+// 添加新的结构体用于字幕搜索结果
+#[derive(Serialize)]
+struct SubtitleSearchResult {
+    file_name: String,
+    language: String,
+    download_url: String,
+    file_id: String,  // 添加 file_id 用于下载
+}
+
+// 添加搜索字幕的命令
+#[tauri::command]
+async fn search_subtitles(file_name: String) -> Result<Vec<SubtitleSearchResult>, String> {
+    let client = reqwest::Client::new();
+    let api_key = std::env::var("OPENSUBTITLES_API_KEY")
+        .map_err(|_| "OpenSubtitles API key not found".to_string())?;
+
+    println!("搜索字幕: {}", file_name);
+
+    // 发送请求
+    let response = client
+        .get("https://api.opensubtitles.com/api/v1/subtitles")
+        .header("Api-Key", api_key)
+        .header("User-Agent", "EPlayer v1.0") // 添加 User-Agent
+        .query(&[
+            ("query", file_name.as_str()),
+            ("languages", "en,zh"),
+        ])
+        .send()
+        .await
+        .map_err(|e| format!("搜索字幕失败: {}", e))?;
+
+    // 检查响应状态
+    let status = response.status();
+    if !status.is_success() {
+        let error_text = response.text().await
+            .unwrap_or_else(|_| "无法读取错误信息".to_string());
+        return Err(format!("API 返回错误: {} - {}", status, error_text));
+    }
+
+    // 解析 JSON
+    let results: serde_json::Value = response.json()
+        .await
+        .map_err(|e| format!("解析 JSON 失败: {}", e))?;
+
+    println!("搜索结果数量: {}", results["total_count"]);
+
+    // 解析搜索结果
+    let subtitles = results["data"]
+        .as_array()
+        .ok_or("无效的响应格式: 找不到 data 数组")?
+        .iter()
+        .filter_map(|item| {
+            let attributes = item.get("attributes")?;
+            
+            // 获取文件信息
+            Some(SubtitleSearchResult {
+                file_name: attributes.get("release")?
+                    .as_str()?
+                    .to_string(),
+                language: attributes.get("language")?
+                    .as_str()?
+                    .to_string(),
+                download_url: format!("https://www.opensubtitles.com/en/subtitles/{}",
+                    attributes.get("slug")?
+                        .as_str()?),
+                file_id: attributes.get("subtitle_id")?
+                    .as_str()?
+                    .to_string(),
+            })
+        })
+        .collect();
+
+    Ok(subtitles)
+}
+
+// 添加下载字幕的命令
+#[tauri::command]
+async fn download_subtitle(file_id: String) -> Result<String, String> {
+    let client = reqwest::Client::new();
+    let api_key = std::env::var("OPENSUBTITLES_API_KEY")
+        .map_err(|_| "OpenSubtitles API key not found".to_string())?;
+
+    println!("开始下载字幕, file_id: {}", file_id);
+
+    // 首先获取下载链接
+    let response = client
+        .post("https://api.opensubtitles.com/api/v1/download")
+        .header("Api-Key", api_key)
+        .header("User-Agent", "EPlayer v1.0")  // 添加 User-Agent
+        .header("Content-Type", "application/json")
+        .header("Accept", "application/json")   // 添加 Accept 头
+        .json(&serde_json::json!({
+            "file_id": file_id,
+            "sub_format": "srt"  // 指定字幕格式
+        }))
+        .send()
+        .await
+        .map_err(|e| format!("获取下载链接失败: {}", e))?;
+
+    // 检查响应状态
+    if !response.status().is_success() {
+        let status = response.status();  // 先保存状态码
+        let error_text = response.text().await
+            .unwrap_or_else(|_| "无法读取错误信息".to_string());
+        return Err(format!("API 返回错误: {} - {}", status, error_text));
+    }
+
+    // 打印响应内容用于调试
+    let response_text = response.text().await
+        .map_err(|e| format!("读取响应内容失败: {}", e))?;
+    println!("下载链接响应: {}", response_text);
+
+    // 解析 JSON 响应
+    let download_info: serde_json::Value = serde_json::from_str(&response_text)
+        .map_err(|e| format!("解析下载信息失败: {} - 响应内容: {}", e, response_text))?;
+
+    // 获取下载链接
+    let download_url = download_info["link"]
+        .as_str()
+        .ok_or_else(|| format!("无效的下载链接 - 响应内容: {}", response_text))?;
+
+    println!("获取到下载链接: {}", download_url);
+
+    // 下载字幕文件
+    let subtitle_response = client
+        .get(download_url)
+        .send()
+        .await
+        .map_err(|e| format!("下载字幕失败: {}", e))?;
+
+    // 检查下载响应状态
+    let status = subtitle_response.status();
+    if !status.is_success() {
+        let error_text = subtitle_response.text().await
+            .unwrap_or_else(|_| "无法读取错误信息".to_string());
+        return Err(format!("下载字幕失败: {} - {}", status, error_text));
+    }
+
+    // 读取字幕内容
+    let subtitle_content = subtitle_response.text().await
+        .map_err(|e| format!("读取字幕内容失败: {}", e))?;
+
+    Ok(subtitle_content)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()        
@@ -494,7 +639,9 @@ pub fn run() {
             get_transcript, 
             communicate_with_openai,
             extract_audio,
-            transcribe_audio  // 添加新命令
+            transcribe_audio,
+            search_subtitles,  // 添加新命令
+            download_subtitle  // 添加新命令
         ])
         .plugin(tauri_plugin_log::Builder::new().build())
         .run(tauri::generate_context!())

@@ -47,6 +47,11 @@ function App() {
     callCount: 0,
     totalDuration: 0
   });
+  const [isSearchingSubtitles, setIsSearchingSubtitles] = useState(false);
+  const [subtitleSearchResults, setSubtitleSearchResults] = useState([]);
+  const [subtitleSearchQuery, setSubtitleSearchQuery] = useState("");
+  const [showSearchResults, setShowSearchResults] = useState(true);
+  const [whisperLanguage, setWhisperLanguage] = useState("en"); // 默认英语
 
   // 获取应用版本号
   useEffect(() => {
@@ -249,7 +254,7 @@ function App() {
     setVideoUrl(""); // 清空视频链接
     setSubtitles([]); // 清空字幕
     setIsLocalVideo(false); // 重置本地视频标记
-    setIsNetworkVideo(false); // 重置网络视频标记
+    setIsNetworkVideo(false); // ���置网络视频标记
     setCurrentTime(0); // 重置当前播放时间
     setCurrentSubtitleIndex(0); // 重置当前字幕索引
     setPlaybackRate(1); // 重置播放速度
@@ -400,7 +405,8 @@ function App() {
       
       console.log('开始转写音频...');
       const result = await invoke('transcribe_audio', { 
-        audioBase64: audioData 
+        audioBase64: audioData,
+        language: whisperLanguage  // 传递选择的语言
       });
       console.log('音频转写完成:', result);
       
@@ -416,6 +422,53 @@ function App() {
       alert('生成字幕失败: ' + error.message);
     } finally {
       setIsGeneratingSubtitles(false);
+    }
+  };
+
+  // 添加处理搜索的函数
+  const handleSearchSubtitles = async (e) => {
+    e.preventDefault();
+    if (!subtitleSearchQuery.trim()) {
+      alert('请输入要搜索的字幕名称');
+      return;
+    }
+
+    setIsSearchingSubtitles(true);
+    setShowSearchResults(true);  // 显示搜索结果
+    try {
+      const results = await invoke('search_subtitles', { 
+        fileName: subtitleSearchQuery 
+      });
+      setSubtitleSearchResults(results);
+    } catch (error) {
+      console.error('搜索字幕失败:', error);
+      alert('搜索字幕失败: ' + error);
+    } finally {
+      setIsSearchingSubtitles(false);
+    }
+  };
+
+  // 修改处理下载字幕的函数
+  const handleDownloadSubtitle = async (subtitle) => {
+    try {
+      console.log('开始下载字幕:', subtitle);
+      const content = await invoke('download_subtitle', { 
+        fileId: subtitle.file_id 
+      });
+      
+      // 将字幕内容解析为字幕对象数组
+      const parser = new SrtParser2();
+      const parsedSubtitles = parser.fromSrt(content);
+      
+      // 更新字幕状态
+      setSubtitles(parsedSubtitles);
+      
+      // 提示用户字幕已加载
+      console.log('字幕已加载');
+      
+    } catch (error) {
+      console.error('下载字幕失败:', error);
+      alert('下载字幕失败: ' + error);
     }
   };
 
@@ -504,24 +557,115 @@ function App() {
             </p>
           </div>
           {isLocalVideo && !subtitles.length && (
+            <div className="subtitle-buttons">
+              <div className="language-select">
+                <select 
+                  value={whisperLanguage}
+                  onChange={(e) => setWhisperLanguage(e.target.value)}
+                  className="language-dropdown"
+                >
+                  <option value="en">English</option>
+                  <option value="zh">中文</option>
+                  <option value="ja">日本語</option>
+                  <option value="ko">한국어</option>
+                  <option value="fr">Français</option>
+                  <option value="de">Deutsch</option>
+                  <option value="es">Español</option>
+                </select>
+              </div>
+              <button 
+                className="ai-subtitle-button"
+                onClick={generateAISubtitles}
+                disabled={isGeneratingSubtitles}
+              >
+                {isGeneratingSubtitles ? (
+                  <>
+                    <div className="loading-spinner" />
+                    生成字幕中...
+                  </>
+                ) : (
+                  <>
+                    <i className="fas fa-closed-captioning" />
+                    生成 AI 字幕
+                  </>
+                )}
+              </button>
+            </div>
+          )}
+          {showSearchResults && subtitleSearchResults.length > 0 ? (
+            <div className="subtitle-search-results">
+              <div className="search-results-header">
+                <h3>找到的字幕:</h3>
+                <button 
+                  className="close-search-results"
+                  onClick={() => setShowSearchResults(false)}
+                >
+                  <i className="fas fa-times" />
+                </button>
+              </div>
+              <div className="results-list">
+                {subtitleSearchResults.map((result, index) => (
+                  <div key={index} className="result-item">
+                    <span>{result.file_name} ({result.language})</span>
+                    <button onClick={() => handleDownloadSubtitle(result)}>
+                      <i className="fas fa-download" />
+                      下载
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            showSearchResults && isSearchingSubtitles && (
+              <div className="subtitle-search-results">
+                <div className="search-results-header">
+                  <h3>搜索结果</h3>
+                  <button 
+                    className="close-search-results"
+                    onClick={() => setShowSearchResults(false)}
+                  >
+                    <i className="fas fa-times" />
+                  </button>
+                </div>
+                <p>未找到相关字幕</p>
+                <p>建议：</p>
+                <ul>
+                  <li>尝试使用更简短的关键词</li>
+                  <li>检查拼写是否正确</li>
+                  <li>尝试使用影片的英文名称</li>
+                </ul>
+              </div>
+            )
+          )}
+        </div>
+        
+        <div className="subtitle-search-container">
+          <form onSubmit={handleSearchSubtitles}>
+            <input
+              type="text"
+              value={subtitleSearchQuery}
+              onChange={(e) => setSubtitleSearchQuery(e.target.value)}
+              placeholder="输入字幕名称搜索"
+              className="subtitle-search-input"
+            />
             <button 
-              className="ai-subtitle-button"
-              onClick={generateAISubtitles}
-              disabled={isGeneratingSubtitles}
+              type="submit"
+              className="search-subtitle-button"
+              disabled={isSearchingSubtitles}
             >
-              {isGeneratingSubtitles ? (
+              {isSearchingSubtitles ? (
                 <>
                   <div className="loading-spinner" />
-                  生成字幕中...
+                  搜索中...
                 </>
               ) : (
                 <>
-                  <i className="fas fa-closed-captioning" />
-                  生成 AI 字幕
+                  <i className="fas fa-search" />
+                  搜索字幕
                 </>
               )}
             </button>
-          )}
+          </form>
         </div>
         <div style={{ display: 'flex', justifyContent: 'left' }}>
           <div>

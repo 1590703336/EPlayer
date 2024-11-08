@@ -126,7 +126,7 @@ button {
   }
 
   a:hover {
-    color: #24c8db; /* 深色模式下链接悬停时的颜色 */
+    color: #24c8db; /* 深色模式链接悬停时的颜色 */
   }
 
   input,
@@ -501,20 +501,23 @@ input[type="file"] {
   padding: 10px 20px;
   border-radius: 4px;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  display: flex;  /* 使用 flex 布局 */
+  flex-direction: row;  /* 明确指定为横向排列 */
+  align-items: center;  /* 垂直居中对齐 */
+  justify-content: center;  /* 水平居中对齐 */
+  gap: 8px;  /* 图标和文字之间的间距 */
   z-index: 1000;
   transition: all 0.3s ease;
-}
-
-.ai-subtitle-button:hover {
-  background: rgba(0, 0, 0, 0.9);
-  transform: translateX(-50%) scale(1.05);
+  white-space: nowrap;  /* 防止文字换行 */
 }
 
 .ai-subtitle-button i {
   font-size: 16px;
+  margin-right: 4px;  /* 给图标右侧添加一点间距 */
+}
+
+.ai-subtitle-button .loading-spinner {
+  margin-right: 4px;  /* 加载动画也添加右侧间距 */
 }
 
 /* 添加加载动画 */
@@ -532,4 +535,348 @@ input[type="file"] {
   to {
     transform: rotate(360deg);
   }
+}
+
+.subtitle-search-form {
+  display: flex;
+  align-items: center;
+  margin-left: 10px;
+}
+
+.subtitle-search-input {
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: none;
+  margin-right: 8px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #000;
+  width: 200px;
+}
+
+.subtitle-search-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.3);
+}
+
+.subtitle-buttons {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.8);
+  padding: 10px;
+  border-radius: 4px;
+}
+
+.subtitle-search-results {
+  position: absolute;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  padding: 15px;
+  border-radius: 8px;
+  max-width: 80%;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1000;
+}
+
+.results-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.result-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.result-item button {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: background-color 0.2s;
+}
+
+.result-item button:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.subtitle-search-results ul {
+  list-style-type: none;
+  padding: 0;
+  margin: 10px 0;
+  text-align: left;
+}
+
+.subtitle-search-results li {
+  margin: 5px 0;
+  color: #999;
+  font-size: 14px;
+}
+
+.subtitle-search-results p {
+  margin: 5px 0;
+  color: #fff;
+}
+
+/* 搜索字幕容器样式 */
+.subtitle-search-container {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  padding: 10px;
+  border-radius: 4px;
+  z-index: 1000;
+  width: auto;
+  display: flex;
+  justify-content: center;
+}
+
+/* 搜索结果头部样式 */
+.search-results-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+/* 关闭按钮样式 */
+.close-search-results {
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  padding: 5px;
+  font-size: 16px;
+  transition: opacity 0.2s;
+}
+
+.close-search-results:hover {
+  opacity: 0.8;
+}
+
+/* 修改字幕控制按钮容器样式 */
+.subtitle-controls {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 1000;
+}
+
+/* 修改 AI 字幕按钮样式 */
+.ai-subtitle-button {
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+  width: fit-content;
+}
+
+/* 修改搜索字幕容器样式 */
+.subtitle-search-container {
+  background: rgba(0, 0, 0, 0.8);
+  padding: 10px;
+  border-radius: 4px;
+  width: fit-content;
+}
+
+/* 修改搜索结果显示位置 */
+.subtitle-search-results {
+  position: fixed;
+  bottom: 100px;
+  right: 20px;
+  background: rgba(0, 0, 0, 0.8);
+  padding: 15px;
+  border-radius: 8px;
+  max-width: 400px;
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 1000;
+}
+
+/* 恢复 AI 字幕按钮的原始样式 */
+.ai-subtitle-button {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 1000;
+  transition: all 0.3s ease;
+}
+
+.ai-subtitle-button:hover {
+  background: rgba(0, 0, 0, 0.9);
+  transform: translateX(-50%) scale(1.05);
+}
+
+/* 修改搜索字幕容器样式，使其更小 */
+.subtitle-search-container {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: rgba(0, 0, 0, 0.8);
+  padding: 8px;
+  border-radius: 4px;
+  z-index: 1000;
+}
+
+.subtitle-search-container form {
+  display: flex;
+  gap: 8px;
+  margin: 0;
+}
+
+.subtitle-search-input {
+  width: 150px;  /* 减小输入框宽度 */
+  padding: 6px 10px;  /* 减小内边距 */
+  font-size: 14px;  /* 减小字体大小 */
+}
+
+.search-subtitle-button {
+  padding: 6px 12px;  /* 减小按钮内边距 */
+  font-size: 14px;  /* 减小字体大小 */
+}
+
+/* 修改搜索结果显示位置，跟随搜索框 */
+.subtitle-search-results {
+  position: fixed;
+  bottom: 70px;  /* 调整位置，避免遮挡搜索框 */
+  right: 20px;
+  background: rgba(0, 0, 0, 0.8);
+  padding: 15px;
+  border-radius: 8px;
+  max-width: 400px;
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 1000;
+}
+
+/* 语言选择下拉框容器 */
+.language-select {
+  margin-right: 10px;
+}
+
+/* 语言选择下拉框样式 */
+.language-dropdown {
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: none;
+  background: rgba(255, 255, 255, 0.9);
+  color: #000;
+  font-size: 14px;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.3s ease;
+}
+
+.language-dropdown:hover {
+  background: rgba(255, 255, 255, 1);
+}
+
+/* 修改字幕按钮容器样式以适应新的布局 */
+.subtitle-buttons {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.8);
+  padding: 10px;
+  border-radius: 4px;
+}
+
+/* 修改字幕按钮容器样式 */
+.subtitle-buttons {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;  /* 使用 flex 布局 */
+  flex-direction: row;  /* 横向排列 */
+  align-items: center;  /* 垂直居中对齐 */
+  gap: 10px;  /* 元素之间的间距 */
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.8);
+  padding: 10px;
+  border-radius: 4px;
+  white-space: nowrap;  /* 防止文字换行 */
+}
+
+/* 语言选择下拉框容器 */
+.language-select {
+  display: inline-block;  /* 内联块级元素 */
+  margin-right: 10px;  /* 右侧间距 */
+}
+
+/* 语言选择下拉框样式 */
+.language-dropdown {
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: none;
+  background: rgba(255, 255, 255, 0.9);
+  color: #000;
+  font-size: 14px;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.3s ease;
+  height: 36px;  /* 设置固定高度，与按钮对齐 */
+}
+
+/* AI 字幕按钮样式 */
+.ai-subtitle-button {
+  position: static;  /* 移除绝对定位 */
+  transform: none;   /* 移除变换 */
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+  height: 36px;  /* 设置固定高度，与下拉框对齐 */
+}
+
+.ai-subtitle-button:hover {
+  background: rgba(0, 0, 0, 0.9);
+  transform: scale(1.05);  /* 只保留缩放效果 */
 }
