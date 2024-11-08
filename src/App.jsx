@@ -9,6 +9,7 @@ import { open } from '@tauri-apps/plugin-shell';  // 导入 open 函数用于打
 import { getVersion } from '@tauri-apps/api/app';  // 导入获取版本号的函数
 import guideImage1 from './assets/guide1.png';
 
+
 function App() {
   // 定义各种状态变量来存储视频文件路径、字幕、当前播放时间、字幕索引、播放速度等
   const [videoUrl, setVideoUrl] = useState(""); // 用于存储视频文件路径
@@ -29,7 +30,7 @@ function App() {
   const [selectedWord, setSelectedWord] = useState(""); // 存储选中的词
   const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0 }); // 控制上下文菜单
   const [showResponse, setShowResponse] = useState(false); // 添加新的状态控制 AI 响应窗口的显示
-  const [showCustomInput, setShowCustomInput] = useState(false);  // 控制自定义输入框显示
+  const [showCustomInput, setShowCustomInput] = useState(false);  // 控制自定输入框显示
   const [customPrompt, setCustomPrompt] = useState("");  // 存储自定义输入内容
   const [response, setResponse] = useState(""); // 添加状态控制 OpenAI 回复
   const [isPlaying, setIsPlaying] = useState(true); // 添加新的状态来控制播放状态
@@ -38,6 +39,20 @@ function App() {
     inputTokens: 0,
     outputTokens: 0
   });
+  const [isExtracting, setIsExtracting] = useState(false);
+  const [audioUrl, setAudioUrl] = useState("");
+  const [isGeneratingSubtitles, setIsGeneratingSubtitles] = useState(false);
+  const [uploadedFile, setUploadedFile] = useState(null);
+  const [whisperStats, setWhisperStats] = useState({
+    callCount: 0,
+    totalDuration: 0
+  });
+  const [isSearchingSubtitles, setIsSearchingSubtitles] = useState(false);
+  const [subtitleSearchResults, setSubtitleSearchResults] = useState([]);
+  const [subtitleSearchQuery, setSubtitleSearchQuery] = useState("");
+  const [showSearchResults, setShowSearchResults] = useState(true);
+  const [whisperLanguage, setWhisperLanguage] = useState("en"); // 默认英语
+  const [isSearchInputFocused, setIsSearchInputFocused] = useState(false);
 
   // 获取应用版本号
   useEffect(() => {
@@ -110,6 +125,10 @@ function App() {
   // 处理键盘事件的效果，例如切换字幕、调整播放速度等
   useEffect(() => {
     const handleKeyDown = (event) => {
+      if (isSearchInputFocused) {
+        return;
+      }
+
       if (event.key === ' ') {  // 检测空格键
         event.preventDefault();  // 阻止空格键的默认行为（页面滚动）
         setIsPlaying(prev => !prev);  // 切换播放状态
@@ -147,7 +166,7 @@ function App() {
     return () => {
       window.removeEventListener('keydown', handleKeyDown); // 组件载时移除事件监听器
     };
-  }, [subtitles, currentSubtitleIndex]); // 确保依赖项包括 currentSubtitleIndex
+  }, [subtitles, currentSubtitleIndex, isSearchInputFocused]); // 添加 isSearchInputFocused 到依赖数组
 
   // 处理当前播放时间的变化来更新当前的字幕索引
   useEffect(() => {
@@ -214,13 +233,25 @@ function App() {
   };
 
   // 处理本地视频文件上传
-  const handleLocalVideoUpload = (e) => {
-    const file = e.target.files[0]; // 获取上传的文件对象
+  const handleLocalVideoUpload = async (event) => {
+    const file = event.target.files[0];
     if (file) {
-      setVideoUrl(URL.createObjectURL(file)); // 创建视频文件的 URL 并设置为视频路径
-      setIsLocalVideo(true); // 标记为本地视频
-      setIsNetworkVideo(false); // 标记不是网络视频
+      setUploadedFile(file);  // 保存文件
+      setVideoUrl(URL.createObjectURL(file));
+      setIsLocalVideo(true);
+      setIsNetworkVideo(false);
+      setIsPlaying(true);  // 直接开始播放
     }
+  };
+
+  // 辅助函数：将文件转换为base64
+  const fileToBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = (error) => reject(error);
+    });
   };
 
   // 重置到初始状态（主页）
@@ -228,7 +259,7 @@ function App() {
     setVideoUrl(""); // 清空视频链接
     setSubtitles([]); // 清空字幕
     setIsLocalVideo(false); // 重置本地视频标记
-    setIsNetworkVideo(false); // 重置网络视频标记
+    setIsNetworkVideo(false); // 置网络视频标记
     setCurrentTime(0); // 重置当前播放时间
     setCurrentSubtitleIndex(0); // 重置当前字幕索引
     setPlaybackRate(1); // 重置播放速度
@@ -357,6 +388,95 @@ function App() {
     return (inputCost + outputCost).toFixed(6); // 保留4位小数
   }
 
+  function calculateTotalDuration(totalDuration) {
+    const totalMinutes = totalDuration / 60;  //每分钟0.006美元
+    return totalMinutes.toFixed(2);
+  }
+
+  // 添加生成 AI 字幕的函数
+  const generateAISubtitles = async () => {
+    if (!uploadedFile) {
+      console.error('没有上传文件');
+      return;
+    }
+
+    setIsGeneratingSubtitles(true);
+    try {
+      console.log('开始提取音频...');
+      const audioData = await invoke('extract_audio', { 
+        videoPath: await fileToBase64(uploadedFile) 
+      });
+      console.log('音频提取完成');
+      
+      console.log('开始转写音频...');
+      const result = await invoke('transcribe_audio', { 
+        audioBase64: audioData,
+        language: whisperLanguage  // 传递选择的语言
+      });
+      console.log('音频转写完成:', result);
+      
+      // 更新统计信息
+      setWhisperStats(prev => ({
+        callCount: prev.callCount + 1,
+        totalDuration: prev.totalDuration + result.duration
+      }));
+      
+      setSubtitles(result.subtitles);
+    } catch (error) {
+      console.error('生成字幕失败:', error);
+      alert('生成字幕失败: ' + error.message);
+    } finally {
+      setIsGeneratingSubtitles(false);
+    }
+  };
+
+  // 添加处理搜索的函数
+  const handleSearchSubtitles = async (e) => {
+    e.preventDefault();
+    if (!subtitleSearchQuery.trim()) {
+      alert('请输入要搜索的字幕名称');
+      return;
+    }
+
+    setIsSearchingSubtitles(true);
+    setShowSearchResults(true);  // 显示搜索结果
+    try {
+      const results = await invoke('search_subtitles', { 
+        fileName: subtitleSearchQuery 
+      });
+      setSubtitleSearchResults(results);
+    } catch (error) {
+      console.error('搜索字幕失败:', error);
+      alert('搜索字幕失败: ' + error);
+    } finally {
+      setIsSearchingSubtitles(false);
+    }
+  };
+
+  // 修改处理下载字幕的函数
+  const handleDownloadSubtitle = async (subtitle) => {
+    try {
+      console.log('开始下载字幕:', subtitle);
+      const content = await invoke('download_subtitle', { 
+        fileId: subtitle.file_id 
+      });
+      
+      // 将字幕内容解析为字幕对象数组
+      const parser = new SrtParser2();
+      const parsedSubtitles = parser.fromSrt(content);
+      
+      // 更新字幕状态
+      setSubtitles(parsedSubtitles);
+      
+      // 提示用户字幕已加载
+      console.log('字幕已加载');
+      
+    } catch (error) {
+      console.error('下载字幕失败:', error);
+      alert('下载字幕失败: ' + error);
+    }
+  };
+
   return (
     <main className="container">
       <div className="home-icon" onClick={resetToHome}>
@@ -372,10 +492,16 @@ function App() {
             <div className="menu-item">Version {appVersion}</div>
             <div className="menu-item">
               AI Stats:<br/>
-              Calls: {aiStats.callCount}<br/>
+              Use Times: {aiStats.callCount}<br/>
               Input Tokens: {aiStats.inputTokens}<br/>
               Output Tokens: {aiStats.outputTokens}<br/>
-              Total Cost: ${calculateCost(aiStats.inputTokens, aiStats.outputTokens)}
+              Total Cost: ${calculateCost(aiStats.inputTokens, aiStats.outputTokens)}<br/>
+              <br/>
+              Whisper Stats:<br/>
+              Use Times: {whisperStats.callCount}<br/>
+              Total Duration: {calculateTotalDuration(whisperStats.totalDuration)} minutes
+              <br/>
+              Total Cost: ${calculateTotalDuration(whisperStats.totalDuration) * 0.006}
             </div>
             <div className="menu-item" onClick={handleWebsiteClick}>Visit Website</div>
             <div className="menu-item" onClick={handleGuideClick}>User Guide</div>
@@ -414,6 +540,13 @@ function App() {
             progressInterval={100} // 每 100 毫秒更新播放进度
             playbackRate={playbackRate} // 设置播放速度
           />
+          {audioUrl && (
+            <div className="audio-player">
+              <audio controls src={audioUrl}>
+                您的浏览器不支持音频播放器
+              </audio>
+            </div>
+          )}
           <div className="subtitle-overlay">
             <p 
               style={{ display: 'flex', justifyContent: 'center', position: 'relative' }}
@@ -428,6 +561,118 @@ function App() {
               </span>
             </p>
           </div>
+          {isLocalVideo && !subtitles.length && (
+            <div className="subtitle-buttons">
+              <div className="language-select">
+                <select 
+                  value={whisperLanguage}
+                  onChange={(e) => setWhisperLanguage(e.target.value)}
+                  className="language-dropdown"
+                >
+                  <option value="en">English</option>
+                  <option value="zh">中文</option>
+                  <option value="ja">日本語</option>
+                  <option value="ko">한국어</option>
+                  <option value="fr">Français</option>
+                  <option value="de">Deutsch</option>
+                  <option value="es">Español</option>
+                </select>
+              </div>
+              <button 
+                className="ai-subtitle-button"
+                onClick={generateAISubtitles}
+                disabled={isGeneratingSubtitles}
+              >
+                {isGeneratingSubtitles ? (
+                  <>
+                    <div className="loading-spinner" />
+                    生成字幕中...
+                  </>
+                ) : (
+                  <>
+                    <i className="fas fa-closed-captioning" />
+                    生成 AI 字幕
+                  </>
+                )}
+              </button>
+            </div>
+          )}
+          {showSearchResults && subtitleSearchResults.length > 0 ? (
+            <div className="subtitle-search-results">
+              <div className="search-results-header">
+                <h3>找到的字幕:</h3>
+                <button 
+                  className="close-search-results"
+                  onClick={() => setShowSearchResults(false)}
+                >
+                  <i className="fas fa-times" />
+                </button>
+              </div>
+              <div className="results-list">
+                {subtitleSearchResults.map((result, index) => (
+                  <div key={index} className="result-item">
+                    <span>{result.file_name} ({result.language})</span>
+                    <button onClick={() => handleDownloadSubtitle(result)}>
+                      <i className="fas fa-download" />
+                      下载
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            showSearchResults && isSearchingSubtitles && (
+              <div className="subtitle-search-results">
+                <div className="search-results-header">
+                  <h3>搜索结果</h3>
+                  <button 
+                    className="close-search-results"
+                    onClick={() => setShowSearchResults(false)}
+                  >
+                    <i className="fas fa-times" />
+                  </button>
+                </div>
+                <p>未找到相关字幕</p>
+                <p>建议：</p>
+                <ul>
+                  <li>尝试使用更简短的关键词</li>
+                  <li>检查拼写是否正确</li>
+                  <li>尝试使用影片的英文名称</li>
+                </ul>
+              </div>
+            )
+          )}
+        </div>
+        
+        <div className="subtitle-search-container">
+          <form onSubmit={handleSearchSubtitles}>
+            <input
+              type="text"
+              value={subtitleSearchQuery}
+              onChange={(e) => setSubtitleSearchQuery(e.target.value)}
+              placeholder="输入字幕名称搜索"
+              className="subtitle-search-input"
+              onFocus={() => setIsSearchInputFocused(true)}
+              onBlur={() => setIsSearchInputFocused(false)}
+            />
+            <button 
+              type="submit"
+              className="search-subtitle-button"
+              disabled={isSearchingSubtitles}
+            >
+              {isSearchingSubtitles ? (
+                <>
+                  <div className="loading-spinner" />
+                  搜索中...
+                </>
+              ) : (
+                <>
+                  <i className="fas fa-search" />
+                  搜索字幕
+                </>
+              )}
+            </button>
+          </form>
         </div>
         <div style={{ display: 'flex', justifyContent: 'left' }}>
           <div>
@@ -445,13 +690,15 @@ function App() {
                 </form>
 
                 <div className="file-input-wrapper">
-                  <label htmlFor="local-video-input">Select local video file:</label>  {/* 注释：选择本地视频文件 */}
-                  <input style={{ width: 150 }}
+                  <label htmlFor="local-video-input">Select local video file:</label>
+                  <input 
                     id="local-video-input"
                     type="file"
                     accept="video/*"
                     onChange={handleLocalVideoUpload}
+                    disabled={isExtracting}
                   />
+                  {isExtracting && <span className="extracting-status">正在提取音频...</span>}
                 </div>
               </>
             )}
