@@ -573,15 +573,14 @@ input[type="file"] {
 }
 
 .subtitle-search-results {
-  position: absolute;
-  bottom: 80px;
-  left: 50%;
-  transform: translateX(-50%);
+  position: fixed;
+  bottom: 70px;  /* 调整位置，避免遮挡搜索框 */
+  right: 20px;
   background: rgba(0, 0, 0, 0.8);
   padding: 15px;
   border-radius: 8px;
-  max-width: 80%;
-  max-height: 200px;
+  width: 800px;  /* 设置固定宽度为 800px */
+  max-height: 300px;
   overflow-y: auto;
   z-index: 1000;
 }
@@ -599,6 +598,13 @@ input[type="file"] {
   padding: 8px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   color: white;
+}
+
+.result-item span {
+  flex: 1;  /* 让文本占据剩余空间 */
+  margin-right: 20px;  /* 与下载按钮保持一定距离 */
+  white-space: normal;  /* 允许文本换行 */
+  word-break: break-word;  /* 长单词可以换行 */
 }
 
 .result-item button {

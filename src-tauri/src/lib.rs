@@ -536,22 +536,26 @@ async fn search_subtitles(file_name: String) -> Result<Vec<SubtitleSearchResult>
         .iter()
         .filter_map(|item| {
             let attributes = item.get("attributes")?;
+            let files = attributes.get("files")?.as_array()?;
             
-            // 获取文件信息
-            Some(SubtitleSearchResult {
-                file_name: attributes.get("release")?
-                    .as_str()?
-                    .to_string(),
-                language: attributes.get("language")?
-                    .as_str()?
-                    .to_string(),
-                download_url: format!("https://www.opensubtitles.com/en/subtitles/{}",
-                    attributes.get("slug")?
-                        .as_str()?),
-                file_id: attributes.get("subtitle_id")?
-                    .as_str()?
-                    .to_string(),
-            })
+            if let Some(file) = files.first() {
+                Some(SubtitleSearchResult {
+                    file_name: attributes.get("release")?
+                        .as_str()?
+                        .to_string(),
+                    language: attributes.get("language")?
+                        .as_str()?
+                        .to_string(),
+                    download_url: format!("https://www.opensubtitles.com/en/subtitles/{}",
+                        attributes.get("slug")?
+                            .as_str()?),
+                    file_id: file.get("file_id")?  // 从 files 数组中获取 file_id
+                        .to_string()
+                        .replace("\"", "")  // 移除可能的引号
+                })
+            } else {
+                None
+            }
         })
         .collect();
 
