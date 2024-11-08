@@ -52,6 +52,7 @@ function App() {
   const [subtitleSearchQuery, setSubtitleSearchQuery] = useState("");
   const [showSearchResults, setShowSearchResults] = useState(true);
   const [whisperLanguage, setWhisperLanguage] = useState("en"); // 默认英语
+  const [isSearchInputFocused, setIsSearchInputFocused] = useState(false);
 
   // 获取应用版本号
   useEffect(() => {
@@ -124,6 +125,10 @@ function App() {
   // 处理键盘事件的效果，例如切换字幕、调整播放速度等
   useEffect(() => {
     const handleKeyDown = (event) => {
+      if (isSearchInputFocused) {
+        return;
+      }
+
       if (event.key === ' ') {  // 检测空格键
         event.preventDefault();  // 阻止空格键的默认行为（页面滚动）
         setIsPlaying(prev => !prev);  // 切换播放状态
@@ -161,7 +166,7 @@ function App() {
     return () => {
       window.removeEventListener('keydown', handleKeyDown); // 组件载时移除事件监听器
     };
-  }, [subtitles, currentSubtitleIndex]); // 确保依赖项包括 currentSubtitleIndex
+  }, [subtitles, currentSubtitleIndex, isSearchInputFocused]); // 添加 isSearchInputFocused 到依赖数组
 
   // 处理当前播放时间的变化来更新当前的字幕索引
   useEffect(() => {
@@ -254,7 +259,7 @@ function App() {
     setVideoUrl(""); // 清空视频链接
     setSubtitles([]); // 清空字幕
     setIsLocalVideo(false); // 重置本地视频标记
-    setIsNetworkVideo(false); // ���置网络视频标记
+    setIsNetworkVideo(false); // 置网络视频标记
     setCurrentTime(0); // 重置当前播放时间
     setCurrentSubtitleIndex(0); // 重置当前字幕索引
     setPlaybackRate(1); // 重置播放速度
@@ -647,6 +652,8 @@ function App() {
               onChange={(e) => setSubtitleSearchQuery(e.target.value)}
               placeholder="输入字幕名称搜索"
               className="subtitle-search-input"
+              onFocus={() => setIsSearchInputFocused(true)}
+              onBlur={() => setIsSearchInputFocused(false)}
             />
             <button 
               type="submit"
