@@ -257,7 +257,7 @@ async fn communicate_with_openai(prompt: String, role: AssistantRole) -> Result<
     let body = ChatBody {
         model: "gpt-4o-mini-2024-07-18".to_string(),
         max_tokens: Some(100),
-        temperature: Some(0_f32),
+        temperature: Some(0_f32), // 降低温度以获得更稳定的结果
         top_p: Some(0_f32),
         n: Some(2),
         stream: Some(false),
@@ -434,6 +434,13 @@ async fn transcribe_audio(audio_base64: String, language: String) -> Result<Tran
         .map_err(|e| format!("解码音频数据失败: {}", e))?;
 
     // 创建multipart form
+    let prompt = match language.as_str() {
+        "en" => "Please segment based on complete sentences and natural speech pauses. Avoid breaking mid-sentence.",
+        "zh" => "请严格按照完整句子和自然停顿分段。避免在句子中间断开。",
+        "ja" => "文章の完全な意味と自然な休止点に基づいて分割してください。文の途中で区切らないでください。",
+        _ => "Please segment based on complete sentences and natural speech pauses.",
+    };
+
     let form = reqwest::multipart::Form::new()
         .part("file", reqwest::multipart::Part::bytes(audio_bytes)
             .file_name("audio.mp3")
@@ -442,7 +449,14 @@ async fn transcribe_audio(audio_base64: String, language: String) -> Result<Tran
         .text("model", "whisper-1")
         .text("language", language)
         .text("response_format", "verbose_json")
-        .text("timestamp_granularities", "segment");
+        .text("timestamp_granularities", "segment")
+        .text("prompt", prompt)
+        .text("temperature", "0.1")
+        .text("compression_ratio_threshold", "3.0")
+        .text("no_speech_threshold", "0.4")
+        .text("condition_on_previous_text", "true")
+        .text("vad_filter", "true");
+        
 
     // 发送请求到Whisper API
     let response = client
@@ -466,8 +480,8 @@ async fn transcribe_audio(audio_base64: String, language: String) -> Result<Tran
         .map(|(i, segment)| Subtitle {
             id: (i + 1) as u32,
             text: segment.text.clone(),
-            startSeconds: segment.start,
-            endSeconds: segment.end,
+            startSeconds: (segment.start * 100.0).round() / 100.0,  // 保留两位小数
+            endSeconds: (segment.end * 100.0).round() / 100.0,      // 保留两位小数
         })
         .collect();
 
