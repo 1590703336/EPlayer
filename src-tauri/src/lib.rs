@@ -15,6 +15,7 @@ use base64::encode;
 use std::io::Read;
 use uuid::Uuid;
 use std::path::PathBuf;
+use reqwest::Client;
 
 const LANGUAGES: [&'static str; 8] = ["en", "zh-TW", "ja", "zh-Hant", "ko", "zh", "es", "fr"];  //英语、繁体中文、日语、韩语、简体中文、西班牙语、法语
 
@@ -58,6 +59,19 @@ struct OpenAIResponse {
 #[derive(Serialize, Deserialize)]
 struct Choice {
     text: String,
+}
+
+#[derive(Serialize)]
+struct ProxyRequest {
+    prompt: String,
+    role: String,
+}
+
+#[derive(Deserialize)]
+struct ProxyResponse {
+    content: String,
+    input_tokens: usize,
+    output_tokens: usize,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -251,47 +265,90 @@ async fn fetch_video(video: String, digest: DigestScraper) -> Digest {
 
 #[tauri::command]
 async fn communicate_with_openai(prompt: String, role: AssistantRole) -> Result<AIResponse, String> {
-    let auth = Auth::from_env().map_err(|e| format!("API密钥错误: {:?}", e))?;
-    let openai = OpenAI::new(auth, "https://api.openai.com/v1/");
-    
-    let body = ChatBody {
-        model: "gpt-4o-mini-2024-07-18".to_string(),
-        max_tokens: Some(100),
-        temperature: Some(0_f32), // 降低温度以获得更稳定的结果
-        top_p: Some(0_f32),
-        n: Some(2),
-        stream: Some(false),
-        stop: None,
-        presence_penalty: None,
-        frequency_penalty: None,
-        logit_bias: None,
-        user: None,
-        messages: vec![
-            Message {
-                role: Role::System,
-                content: role.get_system_prompt()
-            },
-            Message {
-                role: Role::User,
-                content: prompt
-            }
-        ],
+    let client = Client::new();
+    let url = "https://eplayer-server.vercel.app/api/openai";
+    // let url = "http://localhost:3000/api/openai";
+
+    // 构建请求体，将角色信息传给代理
+    let request_body = ProxyRequest {
+        prompt,
+        role: role.get_system_prompt() 
     };
-    
-    let rs = openai.chat_completion_create(&body)
-        .map_err(|e| format!("OpenAI API 调用失败: {:?}", e))?;
+  
 
-    let message = rs.choices
-        .first()
-        .and_then(|choice| choice.message.as_ref())
-        .ok_or("未收到有效的回复")?;
+    // 向 Vercel API 发送 POST 请求
+    let response = client
+        .post(url)
+        .header("Content-Type", "application/json")
+        .json(&request_body)
+        .send()
+        .await
+        .map_err(|e| format!("请求失败: {:?}", e))?;
 
-    Ok(AIResponse {
-        content: message.content.clone(),
-        input_tokens: rs.usage.prompt_tokens.unwrap_or(0),
-        output_tokens: rs.usage.completion_tokens.unwrap_or(0),
-    })
+    if response.status().is_success() {
+        let proxy_response: ProxyResponse = response
+            .json()
+            .await
+            .map_err(|e| format!("解析响应失败: {:?}", e))?;
+
+        Ok(AIResponse {
+            content: proxy_response.content,
+            input_tokens: proxy_response.input_tokens as u32,
+            output_tokens: proxy_response.output_tokens as u32,
+        })
+    } else {
+        let error_message = response
+            .text()
+            .await
+            .unwrap_or_else(|_| "未收到有效的响应".to_string());
+        Err(format!("代理 API 调用失败: {}", error_message))
+    }
 }
+
+
+// #[tauri::command]
+// async fn communicate_with_openai(prompt: String, role: AssistantRole) -> Result<AIResponse, String> {
+//     let auth = Auth::from_env().map_err(|e| format!("API密钥错误: {:?}", e))?;
+//     let openai = OpenAI::new(auth, "https://api.openai.com/v1/");
+    
+//     let body = ChatBody {
+//         model: "gpt-4o-mini-2024-07-18".to_string(),
+//         max_tokens: Some(100),
+//         temperature: Some(0_f32), // 降低温度以获得更稳定的结果
+//         top_p: Some(0_f32),
+//         n: Some(2),
+//         stream: Some(false),
+//         stop: None,
+//         presence_penalty: None,
+//         frequency_penalty: None,
+//         logit_bias: None,
+//         user: None,
+//         messages: vec![
+//             Message {
+//                 role: Role::System,
+//                 content: role.get_system_prompt()
+//             },
+//             Message {
+//                 role: Role::User,
+//                 content: prompt
+//             }
+//         ],
+//     };
+    
+//     let rs = openai.chat_completion_create(&body)
+//         .map_err(|e| format!("OpenAI API 调用失败: {:?}", e))?;
+
+//     let message = rs.choices
+//         .first()
+//         .and_then(|choice| choice.message.as_ref())
+//         .ok_or("未收到有效的回复")?;
+
+//     Ok(AIResponse {
+//         content: message.content.clone(),
+//         input_tokens: rs.usage.prompt_tokens.unwrap_or(0),
+//         output_tokens: rs.usage.completion_tokens.unwrap_or(0),
+//     })
+// }
 
 #[tauri::command]
 fn greet(name: &str) -> String {
