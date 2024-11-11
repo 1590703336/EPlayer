@@ -477,6 +477,13 @@ function App() {
     }
   };
 
+  // 添加时间格式化函数
+  const formatTime = (seconds) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = Math.floor(seconds % 60);
+    return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+  };
+
   return (
     <main className="container">
       <div className="home-icon" onClick={resetToHome}>
@@ -729,7 +736,7 @@ function App() {
               ref={isActive ? (el) => el && el.scrollIntoView({ behavior: 'smooth', block: 'start' }) : null}
               style={{ marginTop: index === 0 ? 'calc(3 * 1.5em)' : '0' }}
             >
-              <p>{subtitle.id}  {subtitle.startSeconds} - {subtitle.text}</p>
+              <p>{subtitle.id}  {formatTime(subtitle.startSeconds)} - {subtitle.text}</p>
             </div>
           );
         })}
