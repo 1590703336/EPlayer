@@ -17,6 +17,8 @@ use uuid::Uuid;
 use std::path::PathBuf;
 use reqwest::Client;
 
+use md5::{Md5, Digest as Md5Digest};
+
 const LANGUAGES: [&'static str; 8] = ["en", "zh-TW", "ja", "zh-Hant", "ko", "zh", "es", "fr"];  //英语、繁体中文、日语、韩语、简体中文、西班牙语、法语
 
 #[derive(Deserialize)]
@@ -703,6 +705,26 @@ async fn download_subtitle(file_id: String) -> Result<String, String> {
     Ok(subtitle_content)
 }
 
+#[tauri::command]
+async fn calculate_md5(video_base64: String) -> Result<String, String> {
+    // 从base64中提取实际的视频数据
+    let video_data = video_base64
+        .split("base64,")
+        .nth(1)
+        .ok_or("无效的视频数据格式")?;
+    
+    let video_bytes = base64::decode(video_data)
+        .map_err(|e| format!("解码视频数据失败: {}", e))?;
+
+    // 计算MD5
+    let mut hasher = Md5::new();
+    hasher.update(&video_bytes);
+    let result = hasher.finalize();
+    
+    // 将结果转换为十六进制字符串
+    Ok(format!("{:x}", result))
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()        
@@ -715,8 +737,9 @@ pub fn run() {
             communicate_with_openai,
             extract_audio,
             transcribe_audio,
-            search_subtitles,  // 添加新命令
-            download_subtitle  // 添加新命令
+            search_subtitles,
+            download_subtitle,
+            calculate_md5  // 添加新命令
         ])
         .plugin(tauri_plugin_log::Builder::new().build())
         .run(tauri::generate_context!())

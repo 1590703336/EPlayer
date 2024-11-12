@@ -53,6 +53,7 @@ function App() {
   const [showSearchResults, setShowSearchResults] = useState(true);
   const [whisperLanguage, setWhisperLanguage] = useState("en"); // 默认英语
   const [isSearchInputFocused, setIsSearchInputFocused] = useState(false);
+  const [videoMd5, setVideoMd5] = useState("");
 
   // 获取应用版本号
   useEffect(() => {
@@ -236,11 +237,21 @@ function App() {
   const handleLocalVideoUpload = async (event) => {
     const file = event.target.files[0];
     if (file) {
-      setUploadedFile(file);  // 保存文件
+      setUploadedFile(file);
       setVideoUrl(URL.createObjectURL(file));
       setIsLocalVideo(true);
       setIsNetworkVideo(false);
-      setIsPlaying(true);  // 直接开始播放
+      setIsPlaying(true);
+
+      // 计算视频文件的MD5
+      try {
+        const base64 = await fileToBase64(file);
+        const md5 = await invoke("calculate_md5", { videoBase64: base64 });
+        setVideoMd5(md5);
+        console.log("视频MD5:", md5);
+      } catch (error) {
+        console.error("计算MD5失败:", error);
+      }
     }
   };
 
@@ -497,6 +508,11 @@ function App() {
         {showAboutMenu && (
           <div className="about-menu">
             <div className="menu-item">Version {appVersion}</div>
+            {isLocalVideo && videoMd5 && (
+              <div className="menu-item">
+                Video MD5: {videoMd5}
+              </div>
+            )}
             <div className="menu-item">
               AI Stats:<br/>
               Use Times: {aiStats.callCount}<br/>
@@ -693,7 +709,7 @@ function App() {
                     onChange={(e) => setNetworkVideoUrl(e.target.value)}
                     placeholder="Enter YouTube link" // 提示用户输入网络视频链接
                   />
-                  <button type="submit">Load</button>   {/* 注释：加载网络视频 */}
+                  <button type="submit">Load</button>   {/* 注释：加载网络视�� */}
                 </form>
 
                 <div className="file-input-wrapper">
