@@ -350,10 +350,11 @@ function App() {
 
     try {
       // 获取当前用户统计数据
-      const userData = await invoke("get_user_data", { 
-        userId: currentUserId 
-      });
-
+      // const userData = await invoke("get_user_data", { 
+      //   userId: currentUserId 
+      // });
+      const userData = await api.getUser(currentUserId);
+      
       console.log("Current user data:", userData);
 
       // 根据使用的功能类型计算新的统计数据
@@ -385,7 +386,7 @@ function App() {
         AI_total_cost: newAITotalCost,
       }
 
-      await api.updateUser(payload);
+      await api.updateUser(currentUserId,payload);
       // await api.updateUserInfo(payload)
 
       // 更新用户统计信息，使用正确的参数名称
@@ -660,17 +661,22 @@ function App() {
     e.preventDefault();
     setIsLoggingIn(true);
     try {
-      const result = await invoke("login_user", { 
-        id: loginForm.id
-      });
-      
-      if (result.success) {
+      // const result = await invoke("login_user", { 
+      //   id: loginForm.id
+      // });
+      const result = await api.loginUser(loginForm.id);
+      const data = result.data;
+      console.log("登录结果:", data.success);
+      if (data.success) {
         setCurrentUserId(loginForm.id);
         
         // 登录成功后更新用户版本信息
         try {
-          const updateResult = await invoke("update_user_version", {
-            userId: loginForm.id,
+          // const updateResult = await invoke("update_user_version", {
+          //   userId: loginForm.id,
+          //   version: appVersion
+          // });
+          const updateResult = await api.updateUserVersion(loginForm.id,{
             version: appVersion
           });
           
@@ -681,10 +687,10 @@ function App() {
           console.error("更新用户版本出错:", error);
         }
 
-        console.log("登录成功，用户数据:", result.user_data);
+        console.log("登录成功，用户数据:", data.user_data);
         setShowRegister(false);
       } else {
-        alert(result.message || "登录失败");
+        alert(data.message || "登录失败");
       }
     } catch (error) {
       console.error("登录失败:", error);

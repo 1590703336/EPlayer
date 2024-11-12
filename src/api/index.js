@@ -9,13 +9,17 @@ api = axios.create({
 })
 
 //user
-export const updateUser = (payload) => api.put(`/user`,payload)
+export const getUser = (id) => api.get(`/user/${id}`)
+export const updateUser = (id,payload) => api.put(`/user/${id}`,payload)
 export const updateUserInfo = (payload) => api.post(`/user`,payload)
-
-
+export const loginUser = (id) => api.get(`/user/${id}`)
+export const updateUserVersion = (id,payload) => api.put(`/user/${id}`,payload)
 
 const apis={
+    getUser,
     updateUser,
-    updateUserInfo
+    updateUserInfo,
+    loginUser,
+    updateUserVersion
 }
 export default apis
