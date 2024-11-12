@@ -67,6 +67,7 @@ function App() {
     id: '',
   });
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [shouldCancelGeneration, setShouldCancelGeneration] = useState(false);
 
   // 获取应用版本号
   useEffect(() => {
@@ -282,6 +283,7 @@ function App() {
 
   // 重置到始状态（主页）
   const resetToHome = () => {
+    setShouldCancelGeneration(true); // 设置取消标志
     setVideoUrl(""); // 清空视频链接
     setSubtitles([]); // 清空字幕
     setIsLocalVideo(false); // 重置本地视频标记
@@ -289,6 +291,8 @@ function App() {
     setCurrentTime(0); // 重置当前播放时间
     setCurrentSubtitleIndex(0); // 重置当前字幕索引
     setPlaybackRate(1); // 重置播放速度
+    setIsGeneratingSubtitles(false); // 重置生成状态
+    setUploadedFile(null); // 清除上传的文件
   };
 
   // 修改处理"关于"点的函数
@@ -427,30 +431,48 @@ function App() {
     }
 
     setIsGeneratingSubtitles(true);
+    setShouldCancelGeneration(false); // 重置取消标志
+
     try {
       console.log('开始提取音频...');
+      // 检查是否应该取消
+      if (shouldCancelGeneration) {
+        console.log('字幕生成已取消');
+        return;
+      }
+
       const audioData = await invoke('extract_audio', { 
         videoPath: await fileToBase64(uploadedFile) 
       });
       console.log('音频提取完成');
       
+      // 再次检查是否应该取消
+      if (shouldCancelGeneration) {
+        console.log('字幕生成已取消');
+        return;
+      }
+
       console.log('开始转写音频...');
       const result = await invoke('transcribe_audio', { 
         audioBase64: audioData,
-        language: whisperLanguage  // 传递选择的语言
+        language: whisperLanguage
       });
       console.log('音频转写完成:', result);
       
-      // 更新统计信息
-      setWhisperStats(prev => ({
-        callCount: prev.callCount + 1,
-        totalDuration: prev.totalDuration + result.duration
-      }));
-      
-      setSubtitles(result.subtitles);
+      // 如果没有被取消，才更新状态
+      if (!shouldCancelGeneration) {
+        setWhisperStats(prev => ({
+          callCount: prev.callCount + 1,
+          totalDuration: prev.totalDuration + result.duration
+        }));
+        
+        setSubtitles(result.subtitles);
+      }
     } catch (error) {
-      console.error('生成字幕失败:', error);
-      alert('生成字幕失败: ' + error.message);
+      if (!shouldCancelGeneration) {
+        console.error('生成字幕失败:', error);
+        alert('生成字幕失败: ' + error.message);
+      }
     } finally {
       setIsGeneratingSubtitles(false);
     }
@@ -926,7 +948,7 @@ function App() {
         </div>
       )}
 
-      {/* 添加自定义输入框 */}
+      {/* 添加自���义输入框 */}
       {showCustomInput && (
         <div className="custom-input-overlay">
           <div className="custom-input-container">
