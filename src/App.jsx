@@ -8,7 +8,7 @@ import { relaunch } from '@tauri-apps/plugin-process';
 import { open } from '@tauri-apps/plugin-shell';  // 导入 open 函数用于打开链接
 import { getVersion } from '@tauri-apps/api/app';  // 导入获取版本号的函数
 import guideImage1 from './assets/guide1.png';
-
+import api from './api';
 
 function App() {
   // 定义各种状态变量来存储视频文件路径、字幕、当前播放时间、字幕索引、播放速度等
@@ -377,18 +377,29 @@ function App() {
         wallet: newWallet
       });
 
+      const payload={
+        id:currentUserId,
+        AI_use_times: newAIUseTimes,
+        AI_input_tokens: newAIInputTokens,
+        AI_output_tokens: newAIOutputTokens,
+        AI_total_cost: newAITotalCost,
+      }
+
+      await api.updateUser(payload);
+      // await api.updateUserInfo(payload)
+
       // 更新用户统计信息，使用正确的参数名称
-      const updateResult = await invoke("update_user_stats", {
-        userId: currentUserId,
-        aiUseTimes: newAIUseTimes,  // 修改参数名称
-        aiInputTokens: newAIInputTokens,  // 修改参数名称
-        aiOutputTokens: newAIOutputTokens,  // 修改参数名称
-        aiTotalCost: newAITotalCost,  // 修改参数名称
-        whisperUseTimes: newWhisperUseTimes,  // 修改参数名称
-        whisperTotalCost: newWhisperTotalCost,  // 修改参数名称
-        whisperTotalDuration: newWhisperTotalDuration,  // 修改参数名称
-        wallet: newWallet
-      });
+      // const updateResult = await invoke("update_user_stats", {
+      //   userId: currentUserId,
+      //   aiUseTimes: newAIUseTimes,  // 修改参数名称
+      //   aiInputTokens: newAIInputTokens,  // 修改参数名称
+      //   aiOutputTokens: newAIOutputTokens,  // 修改参数名称
+      //   aiTotalCost: newAITotalCost,  // 修改参数名称
+      //   whisperUseTimes: newWhisperUseTimes,  // 修改参数名称
+      //   whisperTotalCost: newWhisperTotalCost,  // 修改参数名称
+      //   whisperTotalDuration: newWhisperTotalDuration,  // 修改参数名称
+      //   wallet: newWallet
+      // });
 
       console.log("Update result:", updateResult);
 
