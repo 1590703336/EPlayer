@@ -68,6 +68,7 @@ function App() {
   });
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [shouldCancelGeneration, setShouldCancelGeneration] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState(null);
 
   // 获取应用版本号
   useEffect(() => {
@@ -343,7 +344,65 @@ function App() {
     }
   };
 
-  // 处理菜单项点击
+  // 修改更新用户统计信息的函数
+  const updateUserStatsToAPI = async (isWhisper, cost, inputTokens = 0, outputTokens = 0, duration = 0) => {
+    if (!currentUserId) return;
+
+    try {
+      // 获取当前用户统计数据
+      const userData = await invoke("get_user_data", { 
+        userId: currentUserId 
+      });
+
+      console.log("Current user data:", userData);
+
+      // 根据使用的功能类型计算新的统计数据
+      const newAIUseTimes = isWhisper ? userData.AI_use_times : userData.AI_use_times + 1;
+      const newAIInputTokens = userData.AI_input_tokens + (isWhisper ? 0 : inputTokens);
+      const newAIOutputTokens = userData.AI_output_tokens + (isWhisper ? 0 : outputTokens);
+      const newAITotalCost = isWhisper ? userData.AI_total_cost : userData.AI_total_cost + cost;
+      const newWhisperUseTimes = isWhisper ? userData.Whisper_use_times + 1 : userData.Whisper_use_times;
+      const newWhisperTotalCost = isWhisper ? userData.Whisper_total_cost + cost : userData.Whisper_total_cost;
+      const newWhisperTotalDuration = isWhisper ? userData.Whisper_total_duration + duration : userData.Whisper_total_duration;
+      const newWallet = userData.wallet - cost;
+
+      console.log("Updating stats:", {
+        AI_use_times: newAIUseTimes,
+        AI_input_tokens: newAIInputTokens,
+        AI_output_tokens: newAIOutputTokens,
+        AI_total_cost: newAITotalCost,
+        Whisper_use_times: newWhisperUseTimes,
+        Whisper_total_cost: newWhisperTotalCost,
+        Whisper_total_duration: newWhisperTotalDuration,
+        wallet: newWallet
+      });
+
+      // 更新用户统计信息，使用正确的参数名称
+      const updateResult = await invoke("update_user_stats", {
+        userId: currentUserId,
+        aiUseTimes: newAIUseTimes,  // 修改参数名称
+        aiInputTokens: newAIInputTokens,  // 修改参数名称
+        aiOutputTokens: newAIOutputTokens,  // 修改参数名称
+        aiTotalCost: newAITotalCost,  // 修改参数名称
+        whisperUseTimes: newWhisperUseTimes,  // 修改参数名称
+        whisperTotalCost: newWhisperTotalCost,  // 修改参数名称
+        whisperTotalDuration: newWhisperTotalDuration,  // 修改参数名称
+        wallet: newWallet
+      });
+
+      console.log("Update result:", updateResult);
+
+      if (!updateResult.success) {
+        console.error("更新用户统计信息失败:", updateResult.message);
+      } else {
+        console.log("用户统计信息更新成功");
+      }
+    } catch (error) {
+      console.error("获取或更新用户数据失败:", error);
+    }
+  };
+
+  // 修改处理菜单项点击的函数
   const handleMenuItemClick = async (role) => {
     try {
       const result = await invoke("communicate_with_openai", { 
@@ -351,11 +410,17 @@ function App() {
         role: role 
       });
       
+      const cost = parseFloat(calculateCost(result.input_tokens, result.output_tokens));
+      
+      // 更新本地统计显示
       setAiStats(prev => ({
         callCount: prev.callCount + 1,
         inputTokens: prev.inputTokens + result.input_tokens,
         outputTokens: prev.outputTokens + result.output_tokens
       }));
+      
+      // 更新用户统计信息
+      await updateUserStatsToAPI(false, cost, result.input_tokens, result.output_tokens);
       
       setResponse(result.content);
       setShowResponse(true);
@@ -380,7 +445,7 @@ function App() {
     };
   }, [showResponse]);
 
-  // 修改处理自定义选项点击的逻辑
+  // 修改处理自定义选项点的逻辑
   const handleCustomClick = () => {
     setShowCustomInput(true);
     setContextMenu({ ...contextMenu, visible: false });
@@ -423,7 +488,7 @@ function App() {
     return totalMinutes.toFixed(2);
   }
 
-  // 添加生成 AI 字幕的函数
+  // 修改生成 AI 字幕的函数
   const generateAISubtitles = async () => {
     if (!uploadedFile) {
       console.error('没有上传文件');
@@ -431,7 +496,7 @@ function App() {
     }
 
     setIsGeneratingSubtitles(true);
-    setShouldCancelGeneration(false); // 重置取消标志
+    setShouldCancelGeneration(false);
 
     try {
       console.log('开始提取音频...');
@@ -459,12 +524,18 @@ function App() {
       });
       console.log('音频转写完成:', result);
       
-      // 如果没有被取消，才更新状态
       if (!shouldCancelGeneration) {
+        const newDuration = result.duration;
+        const newCost = parseFloat((calculateTotalDuration(newDuration) * 0.006).toFixed(6));
+
+        // 更新本地显示
         setWhisperStats(prev => ({
           callCount: prev.callCount + 1,
-          totalDuration: prev.totalDuration + result.duration
+          totalDuration: prev.totalDuration + newDuration
         }));
+
+        // 更新用户统计信息
+        await updateUserStatsToAPI(true, newCost, 0, 0, newDuration);
         
         setSubtitles(result.subtitles);
       }
@@ -545,6 +616,8 @@ function App() {
       });
       
       if (result.success && result.user_id) {
+        setCurrentUserId(result.user_id);
+        
         // 注册成功后更新用户版本信息
         try {
           const updateResult = await invoke("update_user_version", {
@@ -581,11 +654,13 @@ function App() {
       });
       
       if (result.success) {
+        setCurrentUserId(loginForm.id);
+        
         // 登录成功后更新用户版本信息
         try {
           const updateResult = await invoke("update_user_version", {
-            userId: loginForm.id,  // 使用登录的用户ID
-            version: appVersion    // 使用当前应用版本
+            userId: loginForm.id,
+            version: appVersion
           });
           
           if (!updateResult.success) {
@@ -750,7 +825,7 @@ function App() {
                     <span>{result.file_name} ({result.language})</span>
                     <button onClick={() => handleDownloadSubtitle(result)}>
                       <i className="fas fa-download" />
-                      下载
+                      下
                     </button>
                   </div>
                 ))}
@@ -948,7 +1023,7 @@ function App() {
         </div>
       )}
 
-      {/* 添加自���义输入框 */}
+      {/* 添加自义输入框 */}
       {showCustomInput && (
         <div className="custom-input-overlay">
           <div className="custom-input-container">

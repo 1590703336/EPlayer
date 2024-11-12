@@ -369,7 +369,7 @@ async fn extract_audio(video_path: String) -> Result<String, String> {
     let temp_input = temp_dir.join(format!("input_{}.mp4", uuid));
     let temp_output = temp_dir.join(format!("output_{}.mp3", uuid));
 
-    // 将路径��换为字符串
+    // 将路径换为字符串
     let temp_input_str = temp_input.to_string_lossy().to_string();
     let temp_output_str = temp_output.to_string_lossy().to_string();
 
@@ -416,7 +416,7 @@ async fn extract_audio(video_path: String) -> Result<String, String> {
         .map_err(|e| format!("无法读取输出文件: {}", e))?;
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer)
-        .map_err(|e| format!("读取文件失败: {}", e))?;
+        .map_err(|e| format!("读取文件败: {}", e))?;
 
     // 清理临时文件
     let _ = std::fs::remove_file(&temp_input);
@@ -433,7 +433,7 @@ fn get_ffmpeg_path() -> Result<String, String> {
         let output = Command::new("where")
             .arg("ffmpeg.exe")
             .output()
-            .map_err(|_| "找不到 ffmpeg，请确保已安装并加到系统 PATH 中".to_string())?;
+            .map_err(|_| "找不到 ffmpeg，请确保已安装加统 PATH 中".to_string())?;
 
         if output.status.success() {
             let path = String::from_utf8_lossy(&output.stdout);
@@ -490,13 +490,13 @@ async fn transcribe_audio(audio_base64: String, language: String) -> Result<Tran
         .ok_or("无效的音频数据格式")?;
     
     let audio_bytes = base64::decode(audio_data)
-        .map_err(|e| format!("解码音频数据失败: {}", e))?;
+        .map_err(|e| format!("解码音频据失败: {}", e))?;
 
     // 创建multipart form
     let prompt = match language.as_str() {
         "en" => "Please segment based on complete sentences and natural speech pauses. Avoid breaking mid-sentence.",
         "zh" => "请严格按照完整句子和自然停顿分段。避免在句子中间断开。",
-        "ja" => "文章の完全な意味と自然な休止点に基づいて分割してください。文の途中で区切らないでください。",
+        "ja" => "文章の完全な意味と自な休止点に基づいて分割してください。文の途中で区切らないでください。",
         _ => "Please segment based on complete sentences and natural speech pauses.",
     };
 
@@ -659,7 +659,7 @@ async fn download_subtitle(file_id: String) -> Result<String, String> {
         }))
         .send()
         .await
-        .map_err(|e| format!("��取下载链接失败: {}", e))?;
+        .map_err(|e| format!("取下载链接失败: {}", e))?;
 
     // 检查响应状态
     if !response.status().is_success() {
@@ -931,6 +931,149 @@ async fn login_user(id: String) -> Result<LoginResponse, String> {
     }
 }
 
+// 添加用户统计数据结构体
+#[derive(Deserialize)]
+struct UserStats {
+    AI_use_times: i32,
+    AI_total_cost: f64,
+    Whisper_use_times: i32,
+    Whisper_total_cost: f64,
+    wallet: f64,
+}
+
+// 修改更新用户统计信息的结构体
+#[derive(Serialize, Deserialize, Debug)]
+struct UpdateStatsRequest {
+    AI_use_times: i32,
+    AI_input_tokens: i32,
+    AI_output_tokens: i32,
+    AI_total_cost: f64,
+    Whisper_use_times: i32,
+    Whisper_total_cost: f64,
+    Whisper_total_duration: f64,
+    wallet: f64,
+}
+
+// 修改更新用户统计信息的命令
+// #[tauri::command]
+// async fn update_user_stats(user_id: String, stats: UpdateStatsRequest) -> Result<UpdateUserResponse, String> {
+//     let client = Client::new();
+//     let url = "http://localhost:3000/api/user";
+
+//     println!("Updating stats for user {}: {:?}", user_id, stats);
+
+//     let response = client
+//         .put(url)
+//         .header("Content-Type", "application/json")
+//         .query(&[("id", &user_id)])
+//         .json(&stats)
+//         .send()
+//         .await
+//         .map_err(|e| format!("更新请求失败: {:?}", e))?;
+
+//     let response_text = response.text().await
+//         .map_err(|e| format!("读取响应内容失败: {:?}", e))?;
+
+//     println!("Update response: {}", response_text);
+
+//     match serde_json::from_str::<UpdateUserResponse>(&response_text) {
+//         Ok(response) => Ok(response),
+//         Err(e) => Err(format!("解析响应失败: {} - 响应内容: {}", e, response_text))
+//     }
+// }
+// 修改更新用户统计信息的命令
+#[tauri::command] 
+async fn update_user_stats(user_id: String, AI_use_times: i32, AI_input_tokens: i32, AI_output_tokens: i32, AI_total_cost: f64, Whisper_use_times: i32, Whisper_total_cost: f64, Whisper_total_duration: f64, wallet: f64) -> Result<UpdateUserResponse, String> {
+    let client = Client::new();
+    //let url = "https://eplayer-server.vercel.app/api/user";
+    let url = "http://localhost:3000/api/user";
+
+    // 发送 PUT 请求到 Vercel API
+    let response = client
+        .put(url)
+        .header("Content-Type", "application/json")
+        .query(&[
+            ("id", &user_id),
+            ("AI_use_times", &AI_use_times.to_string()),
+            ("AI_input_tokens", &AI_input_tokens.to_string()),
+            ("AI_output_tokens", &AI_output_tokens.to_string()),
+            ("AI_total_cost", &AI_total_cost.to_string()),
+            ("Whisper_use_times", &Whisper_use_times.to_string()),
+            ("Whisper_total_cost", &Whisper_total_cost.to_string()),
+            ("Whisper_total_duration", &Whisper_total_duration.to_string()),
+            ("wallet", &wallet.to_string()),
+        ])
+        .send()
+        .await
+        .map_err(|e| format!("更新请求失败: {:?}", e))?;
+
+    // 获取响应文本
+    let response_text = response.text().await
+        .map_err(|e| format!("读取响应内容失败: {:?}", e))?;
+
+    println!("Update API Response: {}", response_text); // 添加调试日志
+
+    // 尝试解析响应
+    match serde_json::from_str::<UpdateUserResponse>(&response_text) {
+        Ok(response) => Ok(response),
+        Err(e) => Err(format!("解析响应失败: {} - 响应内容: {}", e, response_text))
+    }
+}
+
+
+// 添加获取用户数据的响应结构体
+#[derive(Deserialize)]
+struct UserData {
+    success: bool,
+    data: Option<UserDataDetails>,
+    message: Option<String>,
+}
+
+// 添加获取用户数据的命令
+#[tauri::command]
+async fn get_user_data(user_id: String) -> Result<UserDataDetails, String> {
+    let client = Client::new();
+    let url = "http://localhost:3000/api/user";
+
+    // 发送 GET 请求到 Vercel API
+    let response = client
+        .get(url)
+        .query(&[("id", &user_id)])
+        .send()
+        .await
+        .map_err(|e| format!("获取用户数据失败: {:?}", e))?;
+
+    let response_text = response.text().await
+        .map_err(|e| format!("读取响应内容失败: {:?}", e))?;
+
+    println!("Get User Data Response: {}", response_text);
+
+    // 解析响应
+    let user_data: UserData = serde_json::from_str(&response_text)
+        .map_err(|e| format!("解析响应失败: {} - 响应内容: {}", e, response_text))?;
+
+    if user_data.success {
+        user_data.data.ok_or("用户数据为空".to_string())
+    } else {
+        Err(user_data.message.unwrap_or("获取用户数据失败".to_string()))
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+struct UserDataDetails {
+    email: String,
+    native_language: String,
+    version: String,
+    AI_use_times: i32,
+    AI_input_tokens: i32,
+    AI_output_tokens: i32,
+    AI_total_cost: f64,
+    Whisper_use_times: i32,
+    Whisper_total_cost: f64,
+    Whisper_total_duration: f64,
+    wallet: f64,
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()        
@@ -948,7 +1091,9 @@ pub fn run() {
             calculate_md5,
             register_user,
             update_user_version,
-            login_user  // 添加登录命令
+            login_user,  // 添加登录命令
+            update_user_stats,  // 添加更新用户统计信息的命令
+            get_user_data  // 添加新命令
         ])
         .plugin(tauri_plugin_log::Builder::new().build())
         .run(tauri::generate_context!())
