@@ -369,7 +369,7 @@ async fn extract_audio(video_path: String) -> Result<String, String> {
     let temp_input = temp_dir.join(format!("input_{}.mp4", uuid));
     let temp_output = temp_dir.join(format!("output_{}.mp3", uuid));
 
-    // 将路径转换为字符串
+    // 将路径��换为字符串
     let temp_input_str = temp_input.to_string_lossy().to_string();
     let temp_output_str = temp_output.to_string_lossy().to_string();
 
@@ -394,7 +394,7 @@ async fn extract_audio(video_path: String) -> Result<String, String> {
     let output = Command::new(&ffmpeg_path)
         .args(&[
             "-i",
-            &temp_input_str,  // 直接使用路径字符串
+            &temp_input_str,  // 直接使用径字符串
             "-vn",
             "-acodec",
             "mp3",
@@ -433,7 +433,7 @@ fn get_ffmpeg_path() -> Result<String, String> {
         let output = Command::new("where")
             .arg("ffmpeg.exe")
             .output()
-            .map_err(|_| "找不到 ffmpeg，请确保已安装并添加到系统 PATH 中".to_string())?;
+            .map_err(|_| "找不到 ffmpeg，请确保已安装并加到系统 PATH 中".to_string())?;
 
         if output.status.success() {
             let path = String::from_utf8_lossy(&output.stdout);
@@ -504,7 +504,7 @@ async fn transcribe_audio(audio_base64: String, language: String) -> Result<Tran
         .part("file", reqwest::multipart::Part::bytes(audio_bytes)
             .file_name("audio.mp3")
             .mime_str("audio/mp3")
-            .map_err(|e| format!("创建表单失败: {}", e))?)
+            .map_err(|e| format!("创建表单失: {}", e))?)
         .text("model", "whisper-1")
         .text("language", language)
         .text("response_format", "verbose_json")
@@ -657,7 +657,7 @@ async fn download_subtitle(file_id: String) -> Result<String, String> {
         }))
         .send()
         .await
-        .map_err(|e| format!("获取下载链接失败: {}", e))?;
+        .map_err(|e| format!("��取下载链接失败: {}", e))?;
 
     // 检查响应状态
     if !response.status().is_success() {
@@ -725,6 +725,210 @@ async fn calculate_md5(video_base64: String) -> Result<String, String> {
     Ok(format!("{:x}", result))
 }
 
+// 添加新的结构体用于用户注册
+#[derive(Serialize, Deserialize)]
+struct User {
+    username: String,
+    email: String,
+    password: String,
+    native_language: String,
+}
+
+#[derive(Serialize)]
+struct RegisterResponse {
+    success: bool,
+    message: String,
+    user_id: Option<String>,  // 合并两个结构体的所有必要字段
+}
+
+// 添加注册用户的命令
+#[tauri::command]
+async fn register_user(
+    username: String,
+    email: String,
+    password: String,
+    native_language: String
+) -> Result<RegisterResponse, String> {
+    let client = Client::new();
+    //let url = "https://eplayer-server.vercel.app/api/user";
+    let url = "http://localhost:3000/api/user";
+
+    // 构建请求体
+    let request_body = RegisterRequest {
+        email: email.clone(),
+        password: password.clone(),
+        native_language: native_language.clone(),
+    };
+
+    // 发送请求到 Vercel API
+    let response = client
+        .post(url)
+        .header("Content-Type", "application/json")
+        .query(&[
+            ("email", email),
+            ("password", password),
+            ("native_language", native_language),
+        ])
+        .send()
+        .await
+        .map_err(|e| format!("注册请求失败: {:?}", e))?;
+
+    // 先获取响应状态码
+    let status = response.status();
+    
+    // 获取响应文本
+    let response_text = response.text().await
+        .map_err(|e| format!("读取响应内容失败: {:?}", e))?;
+
+    println!("API Response: {}", response_text); // 添加调试日志
+
+    // 尝试解析响应
+    if status.is_success() {
+        match serde_json::from_str::<RegisterApiResponse>(&response_text) {
+            Ok(api_response) => {
+                Ok(RegisterResponse {
+                    success: api_response.success,
+                    message: api_response.message,
+                    user_id: api_response.id,
+                })
+            },
+            Err(e) => {
+                Err(format!("解析成功响应失败: {} - 响应内容: {}", e, response_text))
+            }
+        }
+    } else {
+        // 尝试解析错误响应
+        match serde_json::from_str::<RegisterApiResponse>(&response_text) {
+            Ok(error_response) => {
+                Ok(RegisterResponse {
+                    success: false,
+                    message: error_response.message,
+                    user_id: None,
+                })
+            },
+            Err(_) => {
+                // 如果无法解析为 JSON，直接返回响应文本作为错误消息
+                Ok(RegisterResponse {
+                    success: false,
+                    message: response_text,
+                    user_id: None,
+                })
+            }
+        }
+    }
+}
+
+// 用于发送到 Vercel API 的注册请求结构体
+#[derive(Serialize)]
+struct RegisterRequest {
+    email: String,
+    password: String,
+    native_language: String,
+}
+
+// 从 Vercel API 接收的响应结构体
+#[derive(Deserialize)]
+struct RegisterApiResponse {
+    success: bool,
+    id: Option<String>,
+    message: String,
+}
+
+// 添加更新用户信息的请求和响应结构体
+#[derive(Serialize)]
+struct UpdateUserRequest {
+    version: String,
+}
+
+#[derive(Serialize, Deserialize)]
+struct UpdateUserResponse {
+    success: bool,
+    message: String,
+    data: Option<serde_json::Value>,
+}
+
+// 添加更新用户信息的命令
+#[tauri::command]
+async fn update_user_version(user_id: String, version: String) -> Result<UpdateUserResponse, String> {
+    let client = Client::new();
+    //let url = "https://eplayer-server.vercel.app/api/user";
+    let url = "http://localhost:3000/api/user";
+
+    // 发送 PUT 请求到 Vercel API
+    let response = client
+        .put(url)
+        .header("Content-Type", "application/json")
+        .query(&[
+            ("id", &user_id),
+            ("version", &version),
+        ])
+        .send()
+        .await
+        .map_err(|e| format!("更新请求失败: {:?}", e))?;
+
+    // 获取响应文本
+    let response_text = response.text().await
+        .map_err(|e| format!("读取响应内容失败: {:?}", e))?;
+
+    println!("Update API Response: {}", response_text); // 添加调试日志
+
+    // 尝试解析响应
+    match serde_json::from_str::<UpdateUserResponse>(&response_text) {
+        Ok(response) => Ok(response),
+        Err(e) => Err(format!("解析响应失败: {} - 响应内容: {}", e, response_text))
+    }
+}
+
+// 添加登录相关的结构体
+#[derive(Deserialize)]
+struct LoginApiResponse {
+    success: bool,
+    data: Option<serde_json::Value>,
+    message: Option<String>,  // 改为可选字段
+}
+
+#[derive(Serialize)]
+struct LoginResponse {
+    success: bool,
+    message: Option<String>,  // 改为可选字段
+    user_data: Option<serde_json::Value>,
+}
+
+// 添加登录命令
+#[tauri::command]
+async fn login_user(id: String) -> Result<LoginResponse, String> {
+    let client = Client::new();
+    let url = "http://localhost:3000/api/user";  // 或者你的 Vercel API 地址
+
+    // 发送 GET 请求到 Vercel API
+    let response = client
+        .get(url)
+        .query(&[("id", &id)])
+        .send()
+        .await
+        .map_err(|e| format!("登录请求失败: {:?}", e))?;
+
+    // 获取响应文本
+    let response_text = response.text().await
+        .map_err(|e| format!("读取响应内容失败: {:?}", e))?;
+
+    println!("Login API Response: {}", response_text); // 添加调试日志
+
+    // 尝试解析响应
+    match serde_json::from_str::<LoginApiResponse>(&response_text) {
+        Ok(api_response) => {
+            Ok(LoginResponse {
+                success: api_response.success,
+                message: api_response.message,  // 可能为 None
+                user_data: api_response.data,
+            })
+        },
+        Err(e) => {
+            Err(format!("解析响应失败: {} - 响应内容: {}", e, response_text))
+        }
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()        
@@ -739,7 +943,10 @@ pub fn run() {
             transcribe_audio,
             search_subtitles,
             download_subtitle,
-            calculate_md5  // 添加新命令
+            calculate_md5,
+            register_user,
+            update_user_version,
+            login_user  // 添加登录命令
         ])
         .plugin(tauri_plugin_log::Builder::new().build())
         .run(tauri::generate_context!())

@@ -26,7 +26,7 @@
   margin: 0;
   padding-top: 0%; /* 设置顶部内边距为视口高度的 0% */
   display: flex; /* 使用 flex 布局 */
-  flex-direction: row; /* 设元素按行排列 */
+  flex-direction: row; /* 设按行排列 */
   justify-content: center; /* 水平居中子元素 */
   text-align: center; /* 文本居中对齐 */
 }
@@ -71,7 +71,7 @@
 
 a {
   font-weight: 500; /* 设置字体粗细 */
-  color: #646cff; /* 置链接的颜色 */
+  color: #646cff; /* 置链的颜色 */
   text-decoration: inherit; /* 继承文本装饰效果 */
 }
 
@@ -126,7 +126,7 @@ button {
   }
 
   a:hover {
-    color: #24c8db; /* 深色模式链接悬停时的颜色 */
+    color: #24c8db; /* 深色模式接悬停时的颜色 */
   }
 
   input,
@@ -501,14 +501,14 @@ input[type="file"] {
   padding: 10px 20px;
   border-radius: 4px;
   cursor: pointer;
-  display: flex;  /* 使用 flex 布局 */
+  display: flex;  /* 使用 flex 布 */
   flex-direction: row;  /* 明确指定为横向排列 */
   align-items: center;  /* 垂直居中对齐 */
   justify-content: center;  /* 水平居中对齐 */
   gap: 8px;  /* 图标和文字之间的间距 */
   z-index: 1000;
   transition: all 0.3s ease;
-  white-space: nowrap;  /* 防止文字换行 */
+  white-space: nowrap;  /* 止文字换行 */
 }
 
 .ai-subtitle-button i {
@@ -713,7 +713,7 @@ input[type="file"] {
   width: fit-content;
 }
 
-/* 修改搜索结果显示位置 */
+/* 修改搜索结��显示位置 */
 .subtitle-search-results {
   position: fixed;
   bottom: 100px;
@@ -775,7 +775,7 @@ input[type="file"] {
 
 .search-subtitle-button {
   padding: 6px 12px;  /* 减小按钮内边距 */
-  font-size: 14px;  /* 减小字体大小 */
+  font-size: 14px;  /* 减小字体���小 */
 }
 
 /* 修改搜索结果显示位置，跟随搜索框 */
@@ -885,4 +885,170 @@ input[type="file"] {
 .ai-subtitle-button:hover {
   background: rgba(0, 0, 0, 0.9);
   transform: scale(1.05);  /* 只保留缩放效果 */
+}
+
+/* 添加注册弹窗样式 */
+.register-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+}
+
+.register-content {
+  background-color: #1a1a1a;
+  padding: 25px;  /* 减小内边距 */
+  width: 90%;
+  max-width: 500px;
+  height: 80vh;  /* 设置高度为视口高度的80% */
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+  display: flex;  /* 使用 flex 布局 */
+  flex-direction: column;  /* 垂直排列 */
+}
+
+.register-content h2 {
+  color: #fff;
+  margin-bottom: 20px;  /* 减小标题下方间距 */
+  text-align: center;
+  font-size: 20px;  /* 减小标题字号 */
+}
+
+.register-content form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;  /* 占据剩余空间 */
+  gap: 20px;  /* 表单项之间的间距 */
+}
+
+.form-group {
+  display: grid;  /* 使用网格布局 */
+  grid-template-columns: 120px 1fr;  /* 左侧固定宽度，右侧自适应 */
+  align-items: center;
+  width: 100%;
+  margin-bottom: 10px;  /* 减小表单项之间的间距 */
+}
+
+.form-group label {
+  color: #fff;
+  font-size: 13px;  /* 减小标签字号 */
+  text-align: left;  /* 标签左对齐 */
+  padding-left: 20px;  /* 添加左侧内边距 */
+}
+
+/* 移除标签后的等号 */
+.form-group label::after {
+  content: none;
+}
+
+.form-group input,
+.form-group select {
+  padding: 3px 8px;  /* 减小输入框内边距 */
+  height: 25px;  /* 减小输入框高度 */
+  border: 1px solid #333;
+  border-radius: 0;
+  background-color: #2a2a2a;
+  color: #fff;
+  font-size: 13px;  /* 减小输入框字号 */
+  width: 100%;  /* 输入框占满右侧空间 */
+}
+
+.register-content button {
+  width: 90px;  /* 减小按钮宽度 */
+  padding: 4px 10px;  /* 减小按钮内边距 */
+  height: 25px;  /* 减小按钮高度 */
+  font-size: 13px;  /* 减小按钮字号 */
+  background-color: #4a9eff;
+  color: #fff;
+  border: none;
+  border-radius: 0;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  align-self: flex-end;  /* 按钮靠右对齐 */
+  margin-top: 15px;  /* 减小按钮上方间距 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.register-content button:hover {
+  background-color: #357abd;
+}
+
+.register-content button:disabled {
+  background-color: #666;
+  cursor: not-allowed;
+}
+
+.register-content button .loading-spinner {
+  width: 12px;  /* 减小加载动画大小 */
+  height: 12px;
+  border-width: 1px;
+}
+
+/* 修改注册内容区域样式 */
+.register-content {
+  background-color: #1a1a1a;
+  padding: 25px;  /* 减小内边距 */
+  width: 90%;
+  max-width: 500px;
+  height: 80vh;
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+}
+
+/* 添加分隔线样式 */
+.divider {
+  width: 100%;
+  height: 1px;
+  background-color: #333;
+  margin: 20px 0;  /* 减小分隔线上下间距 */
+}
+
+/* 登录区域样式 */
+.login-section {
+  margin-top: 15px;  /* 减小登录区域上方间距 */
+}
+
+.login-section h2 {
+  color: #fff;
+  margin-bottom: 15px;  /* 减小标题下方间距 */
+  text-align: center;
+  font-size: 20px;  /* 减小标题字号 */
+}
+
+/* 修改按钮样式 */
+.register-content button,
+.login-section button {
+  width: 90px;  /* 减小按钮宽度 */
+  padding: 4px 10px;  /* 减小按钮内边距 */
+  height: 25px;  /* 减小按钮高度 */
+  font-size: 13px;  /* 减小按钮字号 */
+  background-color: #4a9eff;
+  color: #fff;
+  border: none;
+  border-radius: 0;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  align-self: flex-end;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 15px;  /* 减小按钮上方间距 */
+}
+
+/* 加载动画样式调整 */
+.register-content button .loading-spinner,
+.login-section button .loading-spinner {
+  width: 12px;  /* 减小加载动画大小 */
+  height: 12px;
+  border-width: 1px;
 }

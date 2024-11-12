@@ -16,7 +16,7 @@ function App() {
   const [subtitles, setSubtitles] = useState([]); // 用于存储解析后的字幕
   const [currentTime, setCurrentTime] = useState(0); // 用于存储当前播放时间
   const [currentSubtitleIndex, setCurrentSubtitleIndex] = useState(0); // 用于存储当前字幕索引
-  const [playbackRate, setPlaybackRate] = useState(1); // 用于储播放速度
+  const [playbackRate, setPlaybackRate] = useState(1); // 用于播放速度
   const playerRef = useRef(null); // 使用 useRef 获取 ReactPlayer 的引用，便于直接控制播放器
   const [networkVideoUrl, setNetworkVideoUrl] = useState(""); // 用于存储网络视频链接
   const [isLocalVideo, setIsLocalVideo] = useState(false); // 用于存储是否为本地视频的状态
@@ -30,7 +30,7 @@ function App() {
   const [selectedWord, setSelectedWord] = useState(""); // 存储选中的词
   const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0 }); // 控制上下文菜单
   const [showResponse, setShowResponse] = useState(false); // 添加新的状态控制 AI 响应窗口的显示
-  const [showCustomInput, setShowCustomInput] = useState(false);  // 控制自定输入框显示
+  const [showCustomInput, setShowCustomInput] = useState(false);  // 控制自输入框显示
   const [customPrompt, setCustomPrompt] = useState("");  // 存储自定义输入内容
   const [response, setResponse] = useState(""); // 添加状态控制 OpenAI 回复
   const [isPlaying, setIsPlaying] = useState(true); // 添加新的状态来控制播放状态
@@ -54,6 +54,19 @@ function App() {
   const [whisperLanguage, setWhisperLanguage] = useState("en"); // 默认英语
   const [isSearchInputFocused, setIsSearchInputFocused] = useState(false);
   const [videoMd5, setVideoMd5] = useState("");
+  const [showRegister, setShowRegister] = useState(true); // 控制注册弹窗显示
+  const [registerForm, setRegisterForm] = useState({
+    username: '',
+    email: '',
+    password: '',
+    nativeLanguage: 'en' // 默认英
+  });
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [isRegisterInputFocused, setIsRegisterInputFocused] = useState(false);
+  const [loginForm, setLoginForm] = useState({
+    id: '',
+  });
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   // 获取应用版本号
   useEffect(() => {
@@ -123,51 +136,53 @@ function App() {
     checkUpdate();
   }, []);
 
-  // 处理键盘事件的效果，例如切换字幕、调整播放速度等
+  // 修改键盘事件处理函数
   useEffect(() => {
     const handleKeyDown = (event) => {
-      if (isSearchInputFocused) {
+      // 如果注册窗口显示、搜索输入框聚焦或注册表单输入框聚焦，不处理快捷键
+      if (showRegister || isSearchInputFocused || isRegisterInputFocused) {
         return;
       }
 
-      if (event.key === ' ') {  // 检测空格键
-        event.preventDefault();  // 阻止空格键的默认行为（页面滚动）
-        setIsPlaying(prev => !prev);  // 切换播放状态
+      if (event.key === ' ') {
+        event.preventDefault();
+        setIsPlaying(prev => !prev);
       } else if (event.key === 'ArrowLeft') {
-        // 切换到上一句字幕
-        const newIndex = Math.max(currentSubtitleIndex - 1, 1); // 确保索引不小于 0
-        const startTime = subtitles[newIndex - 1]?.startSeconds; // 获取上一句字幕的开始时间
+        const newIndex = Math.max(currentSubtitleIndex - 1, 1);
+        const startTime = subtitles[newIndex - 1]?.startSeconds;
         if (playerRef.current) {
-          playerRef.current.seekTo(startTime, 'seconds'); // 跳转到上一句字幕的开始时间           
+          playerRef.current.seekTo(startTime, 'seconds');
         }
-        setCurrentSubtitleIndex(newIndex); // 更新当前字幕索引
+        setCurrentSubtitleIndex(newIndex);
       } else if (event.key === 'ArrowRight') {
-        // 切换到下一句字幕
-        const newIndex = Math.min(currentSubtitleIndex + 1, subtitles.length - 1); // 确保索引不超过字幕长度
-        const startTime = subtitles[newIndex - 1]?.startSeconds; // 获取下一句字幕的开始时间
+        const newIndex = Math.min(currentSubtitleIndex + 1, subtitles.length - 1);
+        const startTime = subtitles[newIndex - 1]?.startSeconds;
         if (playerRef.current) {
-          playerRef.current.seekTo(startTime, 'seconds'); // 跳转到下一句字幕的开始时间
+          playerRef.current.seekTo(startTime, 'seconds');
         }        
-        setCurrentSubtitleIndex(newIndex); // 更新当前字幕索引
+        setCurrentSubtitleIndex(newIndex);
       } else if (event.key === 'r') {
-        // 切换重复播放当前句子的状态
-        setIsRepeating((prev) => !prev); // 切换 isRepeating 状态
+        setIsRepeating((prev) => !prev);
       } else if (event.key === 'ArrowUp') {
-        // 增加播放速度
-        setPlaybackRate((prevRate) => Math.min(prevRate + 0.1, 2)); // 最大速度限制2
+        setPlaybackRate((prevRate) => Math.min(prevRate + 0.1, 2));
       } else if (event.key === 'ArrowDown') {
-        // 降低播放速度
-        setPlaybackRate((prevRate) => Math.max(prevRate - 0.1, 0.5)); // 最小速度限制0.5
-      } else if (event.key.toLowerCase() === 'h') {  // 添加对 h 键的支持
-        setShowGuide(prev => !prev);  // 切换 guide 显示状态
+        setPlaybackRate((prevRate) => Math.max(prevRate - 0.1, 0.5));
+      } else if (event.key.toLowerCase() === 'h') {
+        setShowGuide(prev => !prev);
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown); // 添加键盘事件监听器
+    window.addEventListener('keydown', handleKeyDown);
     return () => {
-      window.removeEventListener('keydown', handleKeyDown); // 组件载时移除事件监听器
+      window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [subtitles, currentSubtitleIndex, isSearchInputFocused]); // 添加 isSearchInputFocused 到依赖数组
+  }, [
+    subtitles, 
+    currentSubtitleIndex, 
+    isSearchInputFocused, 
+    showRegister, 
+    isRegisterInputFocused  // 添加这个依赖
+  ]); // 确保包含所有需要的依赖
 
   // 处理当前播放时间的变化来更新当前的字幕索引
   useEffect(() => {
@@ -265,7 +280,7 @@ function App() {
     });
   };
 
-  // 重置到初始状态（主页）
+  // 重置到始状态（主页）
   const resetToHome = () => {
     setVideoUrl(""); // 清空视频链接
     setSubtitles([]); // 清空字幕
@@ -276,7 +291,7 @@ function App() {
     setPlaybackRate(1); // 重置播放速度
   };
 
-  // 修改处理"关于"点击的函数
+  // 修改处理"关于"点的函数
   const handleAboutClick = () => {
     setShowAboutMenu(!showAboutMenu);
   };
@@ -495,6 +510,82 @@ function App() {
     return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
+  // 在 App 组件中添加处理注册的函数
+  const handleRegister = async (e) => {
+    e.preventDefault();
+    setIsRegistering(true);
+    try {
+      const result = await invoke("register_user", { 
+        username: registerForm.username,
+        email: registerForm.email,
+        password: registerForm.password,
+        nativeLanguage: registerForm.nativeLanguage
+      });
+      
+      if (result.success && result.user_id) {
+        // 注册成功后更新用户版本信息
+        try {
+          const updateResult = await invoke("update_user_version", {
+            userId: result.user_id,
+            version: appVersion
+          });
+          
+          if (!updateResult.success) {
+            console.error("更新用户版本失败:", updateResult.message);
+          }
+        } catch (error) {
+          console.error("更新用户版本出错:", error);
+        }
+        
+        setShowRegister(false);
+      } else {
+        alert(result.message);
+      }
+    } catch (error) {
+      console.error("注册失败:", error);
+      alert("注册失败: " + error);
+    } finally {
+      setIsRegistering(false);
+    }
+  };
+
+  // 修改处理登录的函数
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setIsLoggingIn(true);
+    try {
+      const result = await invoke("login_user", { 
+        id: loginForm.id
+      });
+      
+      if (result.success) {
+        // 登录成功后更新用户版本信息
+        try {
+          const updateResult = await invoke("update_user_version", {
+            userId: loginForm.id,  // 使用登录的用户ID
+            version: appVersion    // 使用当前应用版本
+          });
+          
+          if (!updateResult.success) {
+            console.error("更新用户版本失败:", updateResult.message);
+          }
+        } catch (error) {
+          console.error("更新用户版本出错:", error);
+        }
+
+        console.log("登录成功，用户数据:", result.user_data);
+        setShowRegister(false);
+      } else {
+        alert(result.message || "登录失败");
+      }
+    } catch (error) {
+      console.error("登录失败:", error);
+      alert("登录失败: " + error);
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
   return (
     <main className="container">
       <div className="home-icon" onClick={resetToHome}>
@@ -709,7 +800,7 @@ function App() {
                     onChange={(e) => setNetworkVideoUrl(e.target.value)}
                     placeholder="Enter YouTube link" // 提示用户输入网络视频链接
                   />
-                  <button type="submit">Load</button>   {/* 注释：加载网络视�� */}
+                  <button type="submit">Load</button>   {/* 注释：加载网络视 */}
                 </form>
 
                 <div className="file-input-wrapper">
@@ -852,6 +943,126 @@ function App() {
                 <button type="button" onClick={() => setShowCustomInput(false)}>取消</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* 注册弹窗 */}
+      {showRegister && (
+        <div className="register-overlay">
+          <div className="register-content">
+            <h2>注册账号</h2>
+            <form onSubmit={handleRegister}>
+              <div className="form-group">
+                <label htmlFor="username">用户名</label>
+                <input
+                  type="text"
+                  id="username"
+                  value={registerForm.username}
+                  onChange={(e) => setRegisterForm({
+                    ...registerForm,
+                    username: e.target.value
+                  })}
+                  onFocus={() => setIsRegisterInputFocused(true)}
+                  onBlur={() => setIsRegisterInputFocused(false)}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label htmlFor="email">邮箱</label>
+                <input
+                  type="email"
+                  id="email"
+                  value={registerForm.email}
+                  onChange={(e) => setRegisterForm({
+                    ...registerForm,
+                    email: e.target.value
+                  })}
+                  onFocus={() => setIsRegisterInputFocused(true)}
+                  onBlur={() => setIsRegisterInputFocused(false)}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label htmlFor="password">密码</label>
+                <input
+                  type="password"
+                  id="password"
+                  value={registerForm.password}
+                  onChange={(e) => setRegisterForm({
+                    ...registerForm,
+                    password: e.target.value
+                  })}
+                  onFocus={() => setIsRegisterInputFocused(true)}
+                  onBlur={() => setIsRegisterInputFocused(false)}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label htmlFor="nativeLanguage">母语</label>
+                <select
+                  id="nativeLanguage"
+                  value={registerForm.nativeLanguage}
+                  onChange={(e) => setRegisterForm({
+                    ...registerForm,
+                    nativeLanguage: e.target.value
+                  })}
+                  onFocus={() => setIsRegisterInputFocused(true)}
+                  onBlur={() => setIsRegisterInputFocused(false)}
+                >
+                  <option value="en">English</option>
+                  <option value="zh">中文</option>
+                  <option value="ja">日本語</option>
+                  <option value="ko">한국어</option>
+                  <option value="fr">Français</option>
+                  <option value="de">Deutsch</option>
+                  <option value="es">Español</option>
+                </select>
+              </div>
+              <button type="submit" disabled={isRegistering}>
+                {isRegistering ? (
+                  <>
+                    <div className="loading-spinner" />
+                    注册中...
+                  </>
+                ) : (
+                  "注册"
+                )}
+              </button>
+            </form>
+
+            <div className="divider"></div>
+
+            <div className="login-section">
+              <h2>登录账号</h2>
+              <form onSubmit={handleLogin}>
+                <div className="form-group">
+                  <label htmlFor="loginId">ID</label>
+                  <input
+                    type="text"
+                    id="loginId"
+                    value={loginForm.id}
+                    onChange={(e) => setLoginForm({
+                      ...loginForm,
+                      id: e.target.value
+                    })}
+                    onFocus={() => setIsRegisterInputFocused(true)}
+                    onBlur={() => setIsRegisterInputFocused(false)}
+                    required
+                  />
+                </div>
+                <button type="submit" disabled={isLoggingIn}>
+                  {isLoggingIn ? (
+                    <>
+                      <div className="loading-spinner" />
+                      登录中...
+                    </>
+                  ) : (
+                    "登录"
+                  )}
+                </button>
+              </form>
+            </div>
           </div>
         </div>
       )}
