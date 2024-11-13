@@ -59,7 +59,7 @@ function App() {
     username: '',
     email: '',
     password: '',
-    nativeLanguage: 'en' // 默认英
+    native_language: 'en' // 默认英
   });
   const [isRegistering, setIsRegistering] = useState(false);
   const [isRegisterInputFocused, setIsRegisterInputFocused] = useState(false);
@@ -593,20 +593,22 @@ function App() {
     setIsRegistering(true);
     try {
       console.log("registerForm:", registerForm);
-      const createUserResult = await api.createUser({
-        id: registerForm.id,
-        name: registerForm.name,
-        email: registerForm.email,
-        password: registerForm.password
-      });
+      const createUserResult = await api.createUser(registerForm);
+      // const createUserResult = await api.createUser({
+      //   id: registerForm.id,
+      //   name: registerForm.name,
+      //   email: registerForm.email,
+      //   password: registerForm.password,
+      //   nativeLanguage: registerForm.nativeLanguage
+      // });
       console.log("createUserResult:", createUserResult);
       if (createUserResult.data.success) {
-        setCurrentUserId(createUserResult.data.data.id);
+        setCurrentUserId(createUserResult.data.id);
         console.log("注册成功，用户ID:", currentUserId);
         setShowRegister(false); // 立即关闭注册窗口
 
         // 在后台更新用户版本信息
-        api.updateUserVersion(createUserResult.data.data.id, {
+        api.updateUserVersion(createUserResult.data.id, {
           version: appVersion,
           last_login: new Date().toISOString()
         }).then(updateUserVersionResult => {
