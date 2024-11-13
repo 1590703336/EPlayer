@@ -350,55 +350,39 @@ function App() {
 
     try {
       // 获取当前用户统计数据
-      // const userData = await invoke("get_user_data", { 
-      //   userId: currentUserId 
-      // });
       const userData = await api.getUser(currentUserId);
-      
       console.log("Current user data:", userData);
       console.log("wallet:", userData.data.data.wallet);
-      // 根据使用的功能类型计算新的统计数据
-      const newAIUseTimes = isWhisper ? userData.data.data.AI_use_times : userData.data.data.AI_use_times + 1;
-      const newAIInputTokens = userData.data.data.AI_input_tokens + (isWhisper ? 0 : inputTokens);
-      const newAIOutputTokens = userData.data.data.AI_output_tokens + (isWhisper ? 0 : outputTokens);
-      const newAITotalCost = isWhisper ? userData.data.data.AI_total_cost : userData.data.data.AI_total_cost + cost;
-      const newWhisperUseTimes = isWhisper ? userData.data.data.Whisper_use_times + 1 : userData.data.data.Whisper_use_times;
-      const newWhisperTotalCost = isWhisper ? userData.data.data.Whisper_total_cost + cost : userData.data.data.Whisper_total_cost;
-      const newWhisperTotalDuration = isWhisper ? userData.data.data.Whisper_total_duration + duration : userData.data.data.Whisper_total_duration;
-      const newWallet = userData.data.data.wallet - cost;
-
-      console.log("Updating stats:", {
-        AI_use_times: newAIUseTimes,
-        AI_input_tokens: newAIInputTokens,
-        AI_output_tokens: newAIOutputTokens,
-        AI_total_cost: newAITotalCost,
-        Whisper_use_times: newWhisperUseTimes,
-        Whisper_total_cost: newWhisperTotalCost,
-        Whisper_total_duration: newWhisperTotalDuration,
-        wallet: newWallet
-      });
-
-      const payload = {
-        id: currentUserId,
-        AI_use_times: newAIUseTimes,
-        AI_input_tokens: newAIInputTokens,
-        AI_output_tokens: newAIOutputTokens,
-        AI_total_cost: newAITotalCost,
-        Whisper_use_times: newWhisperUseTimes,
-        Whisper_total_cost: newWhisperTotalCost,
-        Whisper_total_duration: newWhisperTotalDuration,
-        wallet: newWallet
+      
+      // 计算新的统计数据
+      const newStats = {
+        AI_use_times: isWhisper ? userData.data.data.AI_use_times : userData.data.data.AI_use_times + 1,
+        AI_input_tokens: userData.data.data.AI_input_tokens + (isWhisper ? 0 : inputTokens),
+        AI_output_tokens: userData.data.data.AI_output_tokens + (isWhisper ? 0 : outputTokens),
+        AI_total_cost: isWhisper ? userData.data.data.AI_total_cost : userData.data.data.AI_total_cost + cost,
+        Whisper_use_times: isWhisper ? userData.data.data.Whisper_use_times + 1 : userData.data.data.Whisper_use_times,
+        Whisper_total_cost: isWhisper ? userData.data.data.Whisper_total_cost + cost : userData.data.data.Whisper_total_cost,
+        Whisper_total_duration: isWhisper ? userData.data.data.Whisper_total_duration + duration : userData.data.data.Whisper_total_duration,
+        wallet: userData.data.data.wallet - cost
       };
 
-      const updateUserResult = await api.updateUser(currentUserId, payload);
-      if (updateUserResult.data.success) {
-        console.log("更新用户数据成功:", updateUserResult.data.data);
-      }
-      else{
-        console.error("更新用户数据失败:", updateUserResult.data.message);
-      }
+      console.log("Updating stats:", newStats);
+
+      // 在后台更新用户数据
+      api.updateUser(currentUserId, newStats)
+        .then(updateUserResult => {
+          if (updateUserResult.data.success) {
+            console.log("更新用户数据成功:", updateUserResult.data.data);
+          } else {
+            console.error("更新用户数据失败:", updateUserResult.data.message);
+          }
+        })
+        .catch(error => {
+          console.error("更新用户数据出错:", error);
+        });
+
     } catch (error) {
-      console.error("获取或更新用户数据失败:", error);
+      console.error("获取用户数据失败:", error);
     }
   };
 
@@ -607,76 +591,36 @@ function App() {
   const handleRegister = async (e) => {
     e.preventDefault();
     setIsRegistering(true);
-    try{
+    try {
       const createUserResult = await api.createUser(registerForm);
       console.log("createUserResult:", createUserResult);
       if (createUserResult.data.success) {
         setCurrentUserId(createUserResult.data.data.id);
         console.log("注册成功，用户ID:", currentUserId);
+        setShowRegister(false); // 立即关闭注册窗口
 
-        // 注册成功后更新用户版本信息
-        try {
-          const updateUserVersionResult = await api.updateUserVersion(currentUserId,{
-            version: appVersion
-          });
+        // 在后台更新用户版本信息
+        api.updateUserVersion(createUserResult.data.data.id, {
+          version: appVersion
+        }).then(updateUserVersionResult => {
           if (!updateUserVersionResult.data.success) {
             console.error("更新用户版本失败:", updateUserVersionResult.data.message);
-          }
-          else{
+          } else {
             console.log("更新用户版本成功,version:", updateUserVersionResult.data.data.version);
           }
-        }
-        catch (error) {
+        }).catch(error => {
           console.error("更新用户版本出错:", error);
-        }
+        });
 
-      }
-      else{
+      } else {
         alert(createUserResult.data.message);
       }
-    }
-    catch (error) {
+    } catch (error) {
       console.error("注册失败:", error);
       alert("注册失败: " + error);
-    }
-    finally {
+    } finally {
       setIsRegistering(false);
     }
-    // try {
-    //   const result = await invoke("register_user", { 
-    //     username: registerForm.username,
-    //     email: registerForm.email,
-    //     password: registerForm.password,
-    //     nativeLanguage: registerForm.nativeLanguage
-    //   });
-      
-    //   if (result.success && result.user_id) {
-    //     setCurrentUserId(result.user_id);
-        
-    //     // 注册成功后更新用户版本信息
-    //     try {
-    //       const updateResult = await invoke("update_user_version", {
-    //         userId: result.user_id,
-    //         version: appVersion
-    //       });
-          
-    //       if (!updateResult.success) {
-    //         console.error("更新用户版本失败:", updateResult.message);
-    //       }
-    //     } catch (error) {
-    //       console.error("更新用户版本出错:", error);
-    //     }
-        
-    //     setShowRegister(false);
-    //   } else {
-    //     alert(result.message);
-    //   }
-    // } catch (error) {
-    //   console.error("注册失败:", error);
-    //   alert("注册失败: " + error);
-    // } finally {
-    //   setIsRegistering(false);
-    // }
   };
 
   // 修改处理登录的函数
@@ -684,38 +628,28 @@ function App() {
     e.preventDefault();
     setIsLoggingIn(true);
     try {
-      // const result = await invoke("login_user", { 
-      //   id: loginForm.id
-      // });
       const result = await api.loginUser(loginForm.id);
       const data = result.data;
       console.log("登录结果:", data.success);
-      //console.log("data:", data.data);
+      
       if (data.success) {
         setCurrentUserId(loginForm.id);
+        setShowRegister(false); // 立即关闭登录窗口，让用户可以使用软件
         
-        // 登录成功后更新用户版本信息
-        try {
-          // const updateResult = await invoke("update_user_version", {
-          //   userId: loginForm.id,
-          //   version: appVersion
-          // });
-          const updateUserVersionResult = await api.updateUserVersion(loginForm.id,{
-            version: appVersion
-          });
-          //console.log("xxxx", updateUserVersionResult);
+        // 在后台更新用户版本信息
+        api.updateUserVersion(loginForm.id, {
+          version: appVersion
+        }).then(updateUserVersionResult => {
           if (!updateUserVersionResult.data.success) {
             console.error("更新用户版本失败:", updateUserVersionResult.data.message);
-          }
-          else{
+          } else {
             console.log("更新用户版本成功,version:", updateUserVersionResult.data.data.version);
           }
-        } catch (error) {
+        }).catch(error => {
           console.error("更新用户版本出错:", error);
-        }
+        });
 
         console.log("登录成功，用户数据:", data.data);
-        setShowRegister(false);
       } else {
         alert(data.message || "登录失败");
       }
