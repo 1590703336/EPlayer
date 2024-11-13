@@ -592,7 +592,13 @@ function App() {
     e.preventDefault();
     setIsRegistering(true);
     try {
-      const createUserResult = await api.createUser(registerForm);
+      console.log("registerForm:", registerForm);
+      const createUserResult = await api.createUser({
+        id: registerForm.id,
+        name: registerForm.name,
+        email: registerForm.email,
+        password: registerForm.password
+      });
       console.log("createUserResult:", createUserResult);
       if (createUserResult.data.success) {
         setCurrentUserId(createUserResult.data.data.id);
@@ -601,7 +607,8 @@ function App() {
 
         // 在后台更新用户版本信息
         api.updateUserVersion(createUserResult.data.data.id, {
-          version: appVersion
+          version: appVersion,
+          last_login: new Date().toISOString()
         }).then(updateUserVersionResult => {
           if (!updateUserVersionResult.data.success) {
             console.error("更新用户版本失败:", updateUserVersionResult.data.message);
@@ -638,7 +645,8 @@ function App() {
         
         // 在后台更新用户版本信息
         api.updateUserVersion(loginForm.id, {
-          version: appVersion
+          version: appVersion,
+          last_login: new Date().toISOString()
         }).then(updateUserVersionResult => {
           if (!updateUserVersionResult.data.success) {
             console.error("更新用户版本失败:", updateUserVersionResult.data.message);
