@@ -1,4 +1,5 @@
 import axios from "axios";
+import md5 from "md5";
 let api={}
 
 const BASE_URL = "http://localhost:3000/";
@@ -15,6 +16,13 @@ export const updateUser = (id,payload) => api.put(`/user/${id}`,payload)
 export const createUser = (payload) => api.post(`/user`,payload)
 export const loginUser = (id) => api.get(`/user/${id}`)
 export const updateUserVersion = (id,payload) => api.put(`/user/${id}`,payload)
+export const deleteUser = (id) => api.delete(`/user/${id}`)
+
+//subtitle
+export const getSubtitle = (md5) => api.get(`/subtitle/${md5}`)  //叫id还是md5都一样
+export const createSubtitle = (payload) => api.post(`/subtitle`,payload)
+export const deleteSubtitle = (id) => api.delete(`/subtitle/${id}`)
+export const updateSubtitle = (id,payload) => api.put(`/subtitle/${id}`,payload)
 
 const apis={
     getUser,
@@ -22,6 +30,11 @@ const apis={
     //updateUserInfo,
     createUser,
     loginUser,
-    updateUserVersion
+    updateUserVersion,
+    deleteUser,
+    getSubtitle,
+    createSubtitle,
+    deleteSubtitle,
+    updateSubtitle
 }
 export default apis

@@ -13,7 +13,7 @@ import api from './api';
 function App() {
   // 定义各种状态变量来存储视频文件路径、字幕、当前播放时间、字幕索引、播放速度等
   const [videoUrl, setVideoUrl] = useState(""); // 用于存储视频文件路径
-  const [subtitles, setSubtitles] = useState([]); // 用于存储解析后的字幕
+  const [subtitles, setSubtitles] = useState([]); // 用于存��解析后的字幕
   const [currentTime, setCurrentTime] = useState(0); // 用于存储当前播放时间
   const [currentSubtitleIndex, setCurrentSubtitleIndex] = useState(0); // 用于存储当前字幕索引
   const [playbackRate, setPlaybackRate] = useState(1); // 用于播放速度
@@ -30,7 +30,7 @@ function App() {
   const [selectedWord, setSelectedWord] = useState(""); // 存储选中的词
   const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0 }); // 控制上下文菜单
   const [showResponse, setShowResponse] = useState(false); // 添加新的状态控制 AI 响应窗口的显示
-  const [showCustomInput, setShowCustomInput] = useState(false);  // 控制自输入框显示
+  const [showCustomInput, setShowCustomInput] = useState(false);  // 控制自输入显示
   const [customPrompt, setCustomPrompt] = useState("");  // 存储自定义输入内容
   const [response, setResponse] = useState(""); // 添加状态控制 OpenAI 回复
   const [isPlaying, setIsPlaying] = useState(true); // 添加新的状态来控制播放状态
@@ -95,7 +95,7 @@ function App() {
   function handleSubtitleUpload(event) {
     const file = event.target.files[0]; // 获取文件对象
     if (file) {
-      const reader = new FileReader(); // 创建 FileReader 实例以读取文件内容
+      const reader = new FileReader(); // 创建 FileReader 实例以��取文件内容
       reader.onload = (e) => {
         const content = e.target.result; // 读取的文件内容
         const parser = new SrtParser2(); // 创建 SrtParser2 实例以解析字幕文件
@@ -233,7 +233,7 @@ function App() {
       setSubtitles(subtitles); // 设置字幕
       console.log(subtitles);
     } catch (error) {
-      console.error("Error fetching subtitles:", error); // 处理获取字幕的错误
+      console.error("Error fetching subtitles:", error); // 处理获取字幕的错��
     }
   };
 
@@ -468,14 +468,14 @@ function App() {
   }
 
   function calculateTotalDuration(totalDuration) {
-    const totalMinutes = totalDuration / 60;  //每分钟0.006美元
+    const totalMinutes = totalDuration / 60;  //每分钟0.006��元
     return totalMinutes.toFixed(2);
   }
 
   // 修改生成 AI 字幕的函数
   const generateAISubtitles = async () => {
-    if (!uploadedFile) {
-      console.error('没有上传文件');
+    if (!uploadedFile || !currentUserId) {
+      console.error('没有上传文件或未登录');
       return;
     }
 
@@ -483,45 +483,105 @@ function App() {
     setShouldCancelGeneration(false);
 
     try {
-      console.log('开始提取音频...');
-      // 检查是否应该取消
-      if (shouldCancelGeneration) {
-        console.log('字幕生成已取消');
-        return;
+      // 首先检查数据库中是否存在字幕
+      let subtitleExists = false;
+      try {
+        const subtitleData = await api.getSubtitle(videoMd5);
+        if (subtitleData.data.success) {
+          subtitleExists = true;
+          const { user_id, subtitle, play_users_count } = subtitleData.data.data;
+          // 解析并设置字幕
+          setSubtitles(subtitle);
+          
+          if (user_id === currentUserId) {
+            // 如果是当前用户的字幕，直接使用，不统计费用
+            console.log('使用已有字幕，无需付费');
+            return;
+          } else {
+            // 如果是其他用户的字幕，更新播放次数并统计费用
+            const duration = subtitleData.data.data.video_duration;
+            const cost = parseFloat((calculateTotalDuration(duration) * 0.006).toFixed(6));
+            
+            // 更新本地显示的统计信息
+            setWhisperStats(prev => ({
+              callCount: prev.callCount + 1,
+              totalDuration: prev.totalDuration + duration
+            }));
+            
+            // 更新用户统计信息
+            await updateUserStatsToAPI(true, cost, 0, 0, duration);
+            
+            // 更新字幕的播放次数
+            await api.updateSubtitle(videoMd5, {
+              play_users_count: play_users_count + 1
+            });
+            
+            console.log(`使用其他用户字幕，计费 $${cost}，时长 ${calculateTotalDuration(duration)} 分钟`);
+            return;
+          }
+        }
+      } catch (error) {
+        // 如果是404错误，说明字幕不存在，继续执行生成字幕的流程
+        if (error.response && error.response.status === 404) {
+          console.log('字幕不存在，开始生成新字幕...');
+          subtitleExists = false;
+        } else {
+          // 如果是其他错误，则抛出异常
+          throw error;
+        }
       }
 
-      const audioData = await invoke('extract_audio', { 
-        videoPath: await fileToBase64(uploadedFile) 
-      });
-      console.log('音频提取完成');
-      
-      // 再次检查是否应该取消
-      if (shouldCancelGeneration) {
-        console.log('字幕生成已取消');
-        return;
-      }
+      // 如果字幕不存在，则生成新的字幕
+      if (!subtitleExists) {
+        console.log('开始提取音频...');
+        if (shouldCancelGeneration) {
+          console.log('字幕生成已取消');
+          return;
+        }
 
-      console.log('开始转写音频...');
-      const result = await invoke('transcribe_audio', { 
-        audioBase64: audioData,
-        language: whisperLanguage
-      });
-      console.log('音频转写完成:', result);
-      
-      if (!shouldCancelGeneration) {
-        const newDuration = result.duration;
-        const newCost = parseFloat((calculateTotalDuration(newDuration) * 0.006).toFixed(6));
-
-        // 更新本地显示
-        setWhisperStats(prev => ({
-          callCount: prev.callCount + 1,
-          totalDuration: prev.totalDuration + newDuration
-        }));
-
-        // 更新用户统计信息
-        await updateUserStatsToAPI(true, newCost, 0, 0, newDuration);
+        const audioData = await invoke('extract_audio', { 
+          videoPath: await fileToBase64(uploadedFile) 
+        });
+        console.log('音频提取完成');
         
-        setSubtitles(result.subtitles);
+        if (shouldCancelGeneration) {
+          console.log('字幕生成已取消');
+          return;
+        }
+
+        console.log('开始转写音频...');
+        const result = await invoke('transcribe_audio', { 
+          audioBase64: audioData,
+          language: whisperLanguage
+        });
+        console.log('音频转写完成:', result);
+        
+        if (!shouldCancelGeneration) {
+          const newDuration = result.duration;
+          const newCost = parseFloat((calculateTotalDuration(newDuration) * 0.006).toFixed(6));
+
+          // 更新本地显示
+          setWhisperStats(prev => ({
+            callCount: prev.callCount + 1,
+            totalDuration: prev.totalDuration + newDuration
+          }));
+
+          // 更新用户统计信息
+          await updateUserStatsToAPI(true, newCost, 0, 0, newDuration);
+          
+          // 保存字幕到数据库
+          await api.createSubtitle({
+            md5: videoMd5,
+            video_duration: newDuration,
+            user_id: currentUserId,
+            subtitle: result.subtitles,
+            play_users_count: 1
+          });
+          
+          setSubtitles(result.subtitles);
+          console.log("字幕已保存到数据库");
+
+        }
       }
     } catch (error) {
       if (!shouldCancelGeneration) {
@@ -594,17 +654,12 @@ function App() {
     try {
       console.log("registerForm:", registerForm);
       const createUserResult = await api.createUser(registerForm);
-      // const createUserResult = await api.createUser({
-      //   id: registerForm.id,
-      //   name: registerForm.name,
-      //   email: registerForm.email,
-      //   password: registerForm.password,
-      //   nativeLanguage: registerForm.nativeLanguage
-      // });
       console.log("createUserResult:", createUserResult);
+
       if (createUserResult.data.success) {
         setCurrentUserId(createUserResult.data.id);
-        console.log("注册成功，用户ID:", currentUserId);
+        console.log("createUserResult.data.id:", createUserResult.data.id);
+        console.log("注册成功，用户ID:", createUserResult.data.id);
         setShowRegister(false); // 立即关闭注册窗口
 
         // 在后台更新用户版本信息
@@ -1084,13 +1139,13 @@ function App() {
                 />
               </div>
               <div className="form-group">
-                <label htmlFor="nativeLanguage">母语</label>
+                <label htmlFor="native_language">母语</label>
                 <select
-                  id="nativeLanguage"
-                  value={registerForm.nativeLanguage}
+                  id="native_language"
+                  value={registerForm.native_language}
                   onChange={(e) => setRegisterForm({
                     ...registerForm,
-                    nativeLanguage: e.target.value
+                    native_language: e.target.value
                   })}
                   onFocus={() => setIsRegisterInputFocused(true)}
                   onBlur={() => setIsRegisterInputFocused(false)}
