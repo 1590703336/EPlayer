@@ -356,16 +356,16 @@ function App() {
       const userData = await api.getUser(currentUserId);
       
       console.log("Current user data:", userData);
-
+      console.log("wallet:", userData.data.data.wallet);
       // 根据使用的功能类型计算新的统计数据
-      const newAIUseTimes = isWhisper ? userData.AI_use_times : userData.AI_use_times + 1;
-      const newAIInputTokens = userData.AI_input_tokens + (isWhisper ? 0 : inputTokens);
-      const newAIOutputTokens = userData.AI_output_tokens + (isWhisper ? 0 : outputTokens);
-      const newAITotalCost = isWhisper ? userData.AI_total_cost : userData.AI_total_cost + cost;
-      const newWhisperUseTimes = isWhisper ? userData.Whisper_use_times + 1 : userData.Whisper_use_times;
-      const newWhisperTotalCost = isWhisper ? userData.Whisper_total_cost + cost : userData.Whisper_total_cost;
-      const newWhisperTotalDuration = isWhisper ? userData.Whisper_total_duration + duration : userData.Whisper_total_duration;
-      const newWallet = userData.wallet - cost;
+      const newAIUseTimes = isWhisper ? userData.data.data.AI_use_times : userData.data.data.AI_use_times + 1;
+      const newAIInputTokens = userData.data.data.AI_input_tokens + (isWhisper ? 0 : inputTokens);
+      const newAIOutputTokens = userData.data.data.AI_output_tokens + (isWhisper ? 0 : outputTokens);
+      const newAITotalCost = isWhisper ? userData.data.data.AI_total_cost : userData.data.data.AI_total_cost + cost;
+      const newWhisperUseTimes = isWhisper ? userData.data.data.Whisper_use_times + 1 : userData.data.data.Whisper_use_times;
+      const newWhisperTotalCost = isWhisper ? userData.data.data.Whisper_total_cost + cost : userData.data.data.Whisper_total_cost;
+      const newWhisperTotalDuration = isWhisper ? userData.data.data.Whisper_total_duration + duration : userData.data.data.Whisper_total_duration;
+      const newWallet = userData.data.data.wallet - cost;
 
       console.log("Updating stats:", {
         AI_use_times: newAIUseTimes,
@@ -378,36 +378,24 @@ function App() {
         wallet: newWallet
       });
 
-      const payload={
-        id:currentUserId,
+      const payload = {
+        id: currentUserId,
         AI_use_times: newAIUseTimes,
         AI_input_tokens: newAIInputTokens,
         AI_output_tokens: newAIOutputTokens,
         AI_total_cost: newAITotalCost,
+        Whisper_use_times: newWhisperUseTimes,
+        Whisper_total_cost: newWhisperTotalCost,
+        Whisper_total_duration: newWhisperTotalDuration,
+        wallet: newWallet
+      };
+
+      const updateUserResult = await api.updateUser(currentUserId, payload);
+      if (updateUserResult.data.success) {
+        console.log("更新用户数据成功:", updateUserResult.data.data);
       }
-
-      await api.updateUser(currentUserId,payload);
-      // await api.updateUserInfo(payload)
-
-      // 更新用户统计信息，使用正确的参数名称
-      // const updateResult = await invoke("update_user_stats", {
-      //   userId: currentUserId,
-      //   aiUseTimes: newAIUseTimes,  // 修改参数名称
-      //   aiInputTokens: newAIInputTokens,  // 修改参数名称
-      //   aiOutputTokens: newAIOutputTokens,  // 修改参数名称
-      //   aiTotalCost: newAITotalCost,  // 修改参数名称
-      //   whisperUseTimes: newWhisperUseTimes,  // 修改参数名称
-      //   whisperTotalCost: newWhisperTotalCost,  // 修改参数名称
-      //   whisperTotalDuration: newWhisperTotalDuration,  // 修改参数名称
-      //   wallet: newWallet
-      // });
-
-      console.log("Update result:", updateResult);
-
-      if (!updateResult.success) {
-        console.error("更新用户统计信息失败:", updateResult.message);
-      } else {
-        console.log("用户统计信息更新成功");
+      else{
+        console.error("更新用户数据失败:", updateUserResult.data.message);
       }
     } catch (error) {
       console.error("获取或更新用户数据失败:", error);
@@ -619,41 +607,76 @@ function App() {
   const handleRegister = async (e) => {
     e.preventDefault();
     setIsRegistering(true);
-    try {
-      const result = await invoke("register_user", { 
-        username: registerForm.username,
-        email: registerForm.email,
-        password: registerForm.password,
-        nativeLanguage: registerForm.nativeLanguage
-      });
-      
-      if (result.success && result.user_id) {
-        setCurrentUserId(result.user_id);
-        
+    try{
+      const createUserResult = await api.createUser(registerForm);
+      console.log("createUserResult:", createUserResult);
+      if (createUserResult.data.success) {
+        setCurrentUserId(createUserResult.data.data.id);
+        console.log("注册成功，用户ID:", currentUserId);
+
         // 注册成功后更新用户版本信息
         try {
-          const updateResult = await invoke("update_user_version", {
-            userId: result.user_id,
+          const updateUserVersionResult = await api.updateUserVersion(currentUserId,{
             version: appVersion
           });
-          
-          if (!updateResult.success) {
-            console.error("更新用户版本失败:", updateResult.message);
+          if (!updateUserVersionResult.data.success) {
+            console.error("更新用户版本失败:", updateUserVersionResult.data.message);
           }
-        } catch (error) {
+          else{
+            console.log("更新用户版本成功,version:", updateUserVersionResult.data.data.version);
+          }
+        }
+        catch (error) {
           console.error("更新用户版本出错:", error);
         }
-        
-        setShowRegister(false);
-      } else {
-        alert(result.message);
+
       }
-    } catch (error) {
+      else{
+        alert(createUserResult.data.message);
+      }
+    }
+    catch (error) {
       console.error("注册失败:", error);
       alert("注册失败: " + error);
-    } finally {
+    }
+    finally {
       setIsRegistering(false);
     }
+    // try {
+    //   const result = await invoke("register_user", { 
+    //     username: registerForm.username,
+    //     email: registerForm.email,
+    //     password: registerForm.password,
+    //     nativeLanguage: registerForm.nativeLanguage
+    //   });
+      
+    //   if (result.success && result.user_id) {
+    //     setCurrentUserId(result.user_id);
+        
+    //     // 注册成功后更新用户版本信息
+    //     try {
+    //       const updateResult = await invoke("update_user_version", {
+    //         userId: result.user_id,
+    //         version: appVersion
+    //       });
+          
+    //       if (!updateResult.success) {
+    //         console.error("更新用户版本失败:", updateResult.message);
+    //       }
+    //     } catch (error) {
+    //       console.error("更新用户版本出错:", error);
+    //     }
+        
+    //     setShowRegister(false);
+    //   } else {
+    //     alert(result.message);
+    //   }
+    // } catch (error) {
+    //   console.error("注册失败:", error);
+    //   alert("注册失败: " + error);
+    // } finally {
+    //   setIsRegistering(false);
+    // }
   };
 
   // 修改处理登录的函数
@@ -667,6 +690,7 @@ function App() {
       const result = await api.loginUser(loginForm.id);
       const data = result.data;
       console.log("登录结果:", data.success);
+      //console.log("data:", data.data);
       if (data.success) {
         setCurrentUserId(loginForm.id);
         
@@ -676,18 +700,21 @@ function App() {
           //   userId: loginForm.id,
           //   version: appVersion
           // });
-          const updateResult = await api.updateUserVersion(loginForm.id,{
+          const updateUserVersionResult = await api.updateUserVersion(loginForm.id,{
             version: appVersion
           });
-          
-          if (!updateResult.success) {
-            console.error("更新用户版本失败:", updateResult.message);
+          //console.log("xxxx", updateUserVersionResult);
+          if (!updateUserVersionResult.data.success) {
+            console.error("更新用户版本失败:", updateUserVersionResult.data.message);
+          }
+          else{
+            console.log("更新用户版本成功,version:", updateUserVersionResult.data.data.version);
           }
         } catch (error) {
           console.error("更新用户版本出错:", error);
         }
 
-        console.log("登录成功，用户数据:", data.user_data);
+        console.log("登录成功，用户数据:", data.data);
         setShowRegister(false);
       } else {
         alert(data.message || "登录失败");
