@@ -360,6 +360,7 @@ fn greet(name: &str) -> String {
 #[tauri::command]
 async fn extract_audio(video_path: String) -> Result<String, String> {
     let ffmpeg_path = get_ffmpeg_path()?;
+    println!("ffmpeg路径: {}", ffmpeg_path);
     
     // 使用系统临时目录
     let temp_dir = std::env::temp_dir();
@@ -393,14 +394,17 @@ async fn extract_audio(video_path: String) -> Result<String, String> {
     // 执行 ffmpeg 命令，不需要手动添加引号
     let output = Command::new(&ffmpeg_path)
         .args(&[
+            "-hwaccel", "auto", // 自动选择可用的硬件加速
             "-i",
-            &temp_input_str,  // 直接使用径字符串
+            &temp_input_str,
             "-vn",
             "-acodec",
             "mp3",
             "-f",
-            "mp3",
-            &temp_output_str  // 直接使用路径字符串
+            "mp3", 
+            "-threads",
+            "0",
+            &temp_output_str
         ])
         .output()
         .map_err(|e| format!("ffmpeg执行失败: {}", e))?;
@@ -428,33 +432,56 @@ async fn extract_audio(video_path: String) -> Result<String, String> {
 }
 
 fn get_ffmpeg_path() -> Result<String, String> {
-    #[cfg(target_os = "windows")]
+    #[cfg(debug_assertions)]  // 开发模式
     {
-        let output = Command::new("where")
-            .arg("ffmpeg.exe")
-            .output()
-            .map_err(|_| "找不到 ffmpeg，请确保已安装加统 PATH 中".to_string())?;
+        let current_dir = std::env::current_dir()
+            .map_err(|_| "无法获取当前目录".to_string())?;
+            
+        #[cfg(target_os = "windows")]
+        let ffmpeg_name = "ffmpeg-x86_64-pc-windows-msvc.exe";
+        #[cfg(target_os = "macos")]
+        let ffmpeg_name = "ffmpeg-x86_64-apple-darwin";
+        #[cfg(target_os = "linux")]
+        let ffmpeg_name = "ffmpeg-x86_64-unknown-linux-gnu";
 
-        if output.status.success() {
-            let path = String::from_utf8_lossy(&output.stdout);
-            Ok(path.lines().next().unwrap_or("ffmpeg.exe").trim().to_string())
-        } else {
-            Err("找不到 ffmpeg，请确保已安装并添加到系统 PATH 中".to_string())
+        // 尝试在 binaries 目录查找
+        let binaries_path = current_dir            
+            .join("binaries")
+            .join(ffmpeg_name);
+
+        println!("binaries路径: {}", binaries_path.to_string_lossy());
+            
+        if binaries_path.exists() {
+            return Ok(binaries_path.to_string_lossy().to_string());
         }
+
+        Err("开发模式下找不到 ffmpeg".to_string())
     }
 
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(not(debug_assertions))]  // 发布模式
     {
-        let output = Command::new("which")
-            .arg("ffmpeg")
-            .output()
-            .map_err(|_| "找不到 ffmpeg，请确保已安装并添加到系统 PATH 中".to_string())?;
+        let current_exe = std::env::current_exe()
+            .map_err(|_| "无法获取当前程序路径".to_string())?;
+        let app_dir = current_exe.parent()
+            .ok_or("无法获取程序目录".to_string())?;
 
-        if output.status.success() {
-            let path = String::from_utf8_lossy(&output.stdout);
-            Ok(path.trim().to_string())
+        #[cfg(target_os = "windows")]
+        let ffmpeg_path = app_dir.join("ffmpeg.exe");
+        #[cfg(not(target_os = "windows"))]
+        let ffmpeg_path = app_dir.join("ffmpeg");
+
+        if ffmpeg_path.exists() {
+            #[cfg(not(target_os = "windows"))]
+            {
+                // 在 Unix 系统上设置执行权限
+                use std::os::unix::fs::PermissionsExt;
+                std::fs::set_permissions(&ffmpeg_path, std::fs::Permissions::from_mode(0o755))
+                    .map_err(|e| format!("设置执行权限失败: {}", e))?;
+            }
+            
+            Ok(ffmpeg_path.to_string_lossy().to_string())
         } else {
-            Err("找不到 ffmpeg，请确保已安装并添加到系统 PATH 中".to_string())
+            Err("找不到 ffmpeg，请确保程序目录下存在 ffmpeg".to_string())
         }
     }
 }
