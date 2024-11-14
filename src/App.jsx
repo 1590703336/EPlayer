@@ -489,13 +489,16 @@ function App() {
         const subtitleData = await api.getSubtitle(videoMd5);
         if (subtitleData.data.success) {
           subtitleExists = true;
-          const { user_id, subtitle, play_users_count } = subtitleData.data.data;
+          const { user_id, subtitle, play_users_count, play_times, users } = subtitleData.data.data;
           // 解析并设置字幕
           setSubtitles(subtitle);
           
-          if (user_id === currentUserId) {
+          if (user_id === currentUserId || users.includes(currentUserId)) {
             // 如果是当前用户的字幕，直接使用，不统计费用
             console.log('使用已有字幕，无需付费');
+            await api.updateSubtitle(videoMd5, {
+              play_times: play_times + 1
+            });
             return;
           } else {
             // 如果是其他用户的字幕，更新播放次数并统计费用
@@ -513,7 +516,9 @@ function App() {
             
             // 更新字幕的播放次数
             await api.updateSubtitle(videoMd5, {
-              play_users_count: play_users_count + 1
+              play_users_count: play_users_count + 1,
+              play_times: play_times + 1,
+              users: [...users, currentUserId] // 添加当前用户ID到用户列表
             });
             
             console.log(`使用其他用户字幕，计费 $${cost}，时长 ${calculateTotalDuration(duration)} 分钟`);
