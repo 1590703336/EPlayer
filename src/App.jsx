@@ -69,6 +69,10 @@ function App() {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [shouldCancelGeneration, setShouldCancelGeneration] = useState(false);
   const [currentUserId, setCurrentUserId] = useState(null);
+  const [showNotebook, setShowNotebook] = useState(false);
+  const [notebook, setNotebook] = useState([]);
+  const [isLoadingNotebook, setIsLoadingNotebook] = useState(false);
+  const [isMd5Calculated, setIsMd5Calculated] = useState(false);
 
   // 获取应用版本号
   useEffect(() => {
@@ -254,21 +258,39 @@ function App() {
   const handleLocalVideoUpload = async (event) => {
     const file = event.target.files[0];
     if (file) {
-      setUploadedFile(file);
-      setVideoUrl(URL.createObjectURL(file));
-      setIsLocalVideo(true);
-      setIsNetworkVideo(false);
-      setIsPlaying(true);
+        try {
+            // 先重置状态
+            setIsMd5Calculated(false);
+            setVideoMd5("");
+            
+            // 设置文件相关状态
+            setUploadedFile(file);
+            setVideoUrl(URL.createObjectURL(file));
+            setIsLocalVideo(true);
+            setIsNetworkVideo(false);
+            setIsPlaying(true);
 
-      // 计算视频文件的MD5
-      try {
-        const base64 = await fileToBase64(file);
-        const md5 = await invoke("calculate_md5", { videoBase64: base64 });
-        setVideoMd5(md5);
-        console.log("视频MD5:", md5);
-      } catch (error) {
-        console.error("计算MD5失败:", error);
-      }
+            // 计算MD5
+            const base64 = await fileToBase64(file);
+            const md5 = await invoke("calculate_md5", { videoBase64: base64 });
+            
+            // 使用Promise.all确保两个状态都更新完成
+            await Promise.all([
+                new Promise(resolve => {
+                    setVideoMd5(md5);
+                    resolve();
+                }),
+                new Promise(resolve => {
+                    setIsMd5Calculated(true);
+                    resolve();
+                })
+            ]);
+            
+            console.log("视频MD5计算完成:", md5, "状态已更新");
+        } catch (error) {
+            console.error("计算MD5失败:", error);
+            setIsMd5Calculated(false);
+        }
     }
   };
 
@@ -294,6 +316,7 @@ function App() {
     setPlaybackRate(1); // 重置播放速度
     setIsGeneratingSubtitles(false); // 重置生成状态
     setUploadedFile(null); // 清除上传的文件
+    setIsMd5Calculated(false); // 重置MD5计算状态
   };
 
   // 修改处理"关于"点的函数
@@ -329,7 +352,7 @@ function App() {
       const range = selection.getRangeAt(0);
       const rect = range.getBoundingClientRect();
       
-      // 检查选中的文本是否包含多个词
+      // 检查选中的文本是否包含多词
       const isMultipleWords = selectedText.split(/\s+/).length > 1;
       
       setSelectedWord(selectedText);
@@ -544,13 +567,22 @@ function App() {
       return;
     }
 
-    setIsGeneratingSubtitles(true);
-    setShouldCancelGeneration(false);
+    //等待视频MD5计算完成
+    if(videoMd5===""){
+      console.error('视频MD5未计算');
+      alert('视频MD5正在计算中，请稍后再试');
+
+      return;
+    }
+
+    setIsGeneratingSubtitles(true); // 设置生成状态
+    setShouldCancelGeneration(false); // 设置取消标志
 
     try {
       // 首先检查数据库中是否存在字幕
-      let subtitleExists = false;
-      try {
+      let subtitleExists = false;     
+      
+      try {        
         const subtitleData = await api.getSubtitle(videoMd5);
         if (subtitleData.data.success) {
           subtitleExists = true;
@@ -751,10 +783,12 @@ function App() {
             console.error("更新用户版本失败:", updateUserVersionResult.data.message);
           } else {
             console.log("更新用户版本成功,version:", updateUserVersionResult.data.data.version);
+            console.log("更新最后登录时间成功");
           }
         }).catch(error => {
           console.error("更新用户版本出错:", error);
         });
+        
 
       } else {
         alert(createUserResult.data.message);
@@ -777,23 +811,42 @@ function App() {
       console.log("登录结果:", data.success);
       
       if (data.success) {
+        // 先设置用户ID
         setCurrentUserId(loginForm.id);
-        setShowRegister(false); // 立即关闭登录窗口，让用户可以使用软件
         
-        // 在后台更新用户版本信息
-        api.updateUserVersion(loginForm.id, {
-          version: appVersion,
-          last_login: new Date().toISOString()
-        }).then(updateUserVersionResult => {
-          if (!updateUserVersionResult.data.success) {
-            console.error("更新用户版本失败:", updateUserVersionResult.data.message);
-          } else {
-            console.log("更新用户版本成功,version:", updateUserVersionResult.data.data.version);
+        // 使用立即执行的异步函数来处理后续操作
+        (async () => {
+          try {
+            // 更新用户版本信息
+            const updateUserVersionResult = await api.updateUserVersion(loginForm.id, {
+              version: appVersion,
+              last_login: new Date().toISOString()
+            });
+            
+            if (!updateUserVersionResult.data.success) {
+              console.error("更新用户版本失败:", updateUserVersionResult.data.message);
+            } else {
+              console.log("更新用户版本成功,version:", updateUserVersionResult.data.data.version);
+              console.log("更新最后登录时间成功");
+            }
+            
+            // 预加载笔记数据
+            const userData = await api.getUser(loginForm.id);
+            if (userData.data.success) {
+              const userNotebook = userData.data.data.notebook || [];
+              // 按时间倒序排序
+              setNotebook(userNotebook.sort((a, b) => 
+                new Date(b.timestamp) - new Date(a.timestamp)
+              ));
+              console.log("笔记数据预加载成功");
+            }
+          } catch (error) {
+            console.error('后台操作失败:', error);
           }
-        }).catch(error => {
-          console.error("更新用户版本出错:", error);
-        });
+        })();
 
+        // 关闭注册窗口
+        setShowRegister(false);
         console.log("登录成功，用户数据:", data.data);
       } else {
         alert(data.message || "登录失败");
@@ -805,6 +858,39 @@ function App() {
       setIsLoggingIn(false);
     }
   };
+
+  // 修改处理笔记本点击的函数
+  const handleNotebookClick = () => {
+    setShowNotebook(true);
+    setShowAboutMenu(false);
+  };
+
+  // 添加刷新笔记的函数
+  const refreshNotebook = async () => {
+    setIsLoadingNotebook(true);
+    try {
+      const userData = await api.getUser(currentUserId);
+      if (userData.data.success) {
+        const userNotebook = userData.data.data.notebook || [];
+        // 按时间倒序排序
+        setNotebook(userNotebook.sort((a, b) => 
+          new Date(b.timestamp) - new Date(a.timestamp)
+        ));
+        console.log("笔记刷新成功");
+      }
+    } catch (error) {
+      console.error('刷新笔记失败:', error);
+    } finally {
+      setIsLoadingNotebook(false);
+    }
+  };
+
+  useEffect(() => {
+    if (videoMd5) {
+        setIsMd5Calculated(true);
+        console.log("MD5已更新，设置计算完成状态");
+    }
+  }, [videoMd5]);
 
   return (
     <main className="container">
@@ -839,6 +925,9 @@ function App() {
             </div>
             <div className="menu-item" onClick={handleWebsiteClick}>Visit Website</div>
             <div className="menu-item" onClick={handleGuideClick}>User Guide</div>
+            <div className="menu-item" onClick={handleNotebookClick}>
+              <i className="fas fa-book"></i> Notebook
+            </div>
           </div>
         )}
       </div>
@@ -984,7 +1073,7 @@ function App() {
               type="text"
               value={subtitleSearchQuery}
               onChange={(e) => setSubtitleSearchQuery(e.target.value)}
-              placeholder="输入字幕名称搜���"
+              placeholder="输入字幕名称搜索"
               className="subtitle-search-input"
               onFocus={() => setIsSearchInputFocused(true)}
               onBlur={() => setIsSearchInputFocused(false)}
@@ -1020,7 +1109,7 @@ function App() {
                     onChange={(e) => setNetworkVideoUrl(e.target.value)}
                     placeholder="Enter YouTube link" // 提示用户输入网络视频链接
                   />
-                  <button type="submit">Load</button>   {/* 注释：加载网络视 */}
+                  <button type="submit">Load</button>   {/* 注释加载网络视 */}
                 </form>
 
                 <div className="file-input-wrapper">
@@ -1282,6 +1371,55 @@ function App() {
                   )}
                 </button>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 添加笔记本显示界面 */}
+      {showNotebook && (
+        <div className="notebook-overlay">
+          <div className="notebook-content">
+            <div className="notebook-header">
+              <h2>学习笔记</h2>
+              <div className="notebook-controls">
+                <button className="refresh-button" onClick={refreshNotebook}>
+                  <i className="fas fa-sync-alt"></i>
+                </button>
+                <button className="close-button" onClick={() => setShowNotebook(false)}>
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
+            </div>
+            <div className="notebook-body">
+              {isLoadingNotebook ? (
+                <div className="notebook-loading">
+                  <div className="loading-spinner"></div>
+                  <span>加载中...</span>
+                </div>
+              ) : notebook.length > 0 ? (
+                notebook.map((note, index) => (
+                  <div key={index} className="note-item">
+                    <div className="note-header">
+                      <span className="note-word">{note.word}</span>
+                      <span className="note-type">{note.role}</span>
+                      <span className="note-time">
+                        {new Date(note.timestamp).toLocaleString()}
+                      </span>
+                    </div>
+                    {note.customPrompt && (
+                      <div className="note-prompt">
+                        自定义提示: {note.customPrompt}
+                      </div>
+                    )}
+                    <div className="note-response">{note.response}</div>
+                  </div>
+                ))
+              ) : (
+                <div className="notebook-empty">
+                  <p>暂无笔记</p>
+                </div>
+              )}
             </div>
           </div>
         </div>

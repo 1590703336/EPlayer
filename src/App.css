@@ -713,7 +713,7 @@ input[type="file"] {
   width: fit-content;
 }
 
-/* 修改搜索结��显示位置 */
+/* 修改搜索结显示位置 */
 .subtitle-search-results {
   position: fixed;
   bottom: 100px;
@@ -775,7 +775,7 @@ input[type="file"] {
 
 .search-subtitle-button {
   padding: 6px 12px;  /* 减小按钮内边距 */
-  font-size: 14px;  /* 减小字体���小 */
+  font-size: 14px;  /* 减小字体小 */
 }
 
 /* 修改搜索结果显示位置，跟随搜索框 */
@@ -1051,4 +1051,151 @@ input[type="file"] {
   width: 12px;  /* 减小加载动画大小 */
   height: 12px;
   border-width: 1px;
+}
+
+.notebook-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.notebook-content {
+  background-color: #1a1a1a;
+  border-radius: 8px;
+  width: 80%;
+  max-width: 800px;
+  max-height: 80vh;
+  padding: 20px;
+  position: relative;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+}
+
+.notebook-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #333;
+  flex-shrink: 0;
+}
+
+.notebook-body {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 10px;
+  margin-top: 20px;
+}
+
+/* 自定义滚动条样式 */
+.notebook-body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.notebook-body::-webkit-scrollbar-track {
+  background: #1a1a1a;
+  border-radius: 4px;
+}
+
+.notebook-body::-webkit-scrollbar-thumb {
+  background: #4a9eff;
+  border-radius: 4px;
+}
+
+.notebook-body::-webkit-scrollbar-thumb:hover {
+  background: #357abd;
+}
+
+.note-item {
+  border: 1px solid #333;
+  border-radius: 4px;
+  margin-bottom: 15px;
+  padding: 15px;
+  background-color: #2a2a2a;
+}
+
+.note-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  color: #999;
+  font-size: 0.9em;
+}
+
+.note-word {
+  font-weight: bold;
+  color: #fff;
+}
+
+.note-type {
+  color: #4a9eff;
+}
+
+.note-time {
+  color: #666;
+}
+
+.note-prompt {
+  font-style: italic;
+  color: #999;
+  margin-bottom: 10px;
+  padding-left: 10px;
+  border-left: 3px solid #4a9eff;
+}
+
+.note-response {
+  white-space: pre-wrap;
+  line-height: 1.5;
+  color: #ccc;
+}
+
+/* 添加笔记本控制按钮容器样式 */
+.notebook-controls {
+  display: flex;
+  gap: 10px;
+}
+
+/* 添加刷新按钮样式 */
+.refresh-button {
+  background: none;
+  border: none;
+  color: #4a9eff;
+  cursor: pointer;
+  padding: 5px;
+  font-size: 16px;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.refresh-button:hover {
+  transform: rotate(180deg);
+  color: #357abd;
+}
+
+/* 修改关闭按钮样式以匹配刷新按钮 */
+.notebook-header .close-button {
+  background: none;
+  border: none;
+  color: #ff4a4a;
+  cursor: pointer;
+  padding: 5px;
+  font-size: 16px;
+  transition: color 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.notebook-header .close-button:hover {
+  color: #bd3535;
 }
