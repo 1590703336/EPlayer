@@ -13,7 +13,7 @@ import api from './api';
 function App() {
   // 定义各种状态变量来存储视频文件路径、字幕、当前播放时间、字幕索引、播放速度等
   const [videoUrl, setVideoUrl] = useState(""); // 用于存储视频文件路径
-  const [subtitles, setSubtitles] = useState([]); // 用于存��解析后的字幕
+  const [subtitles, setSubtitles] = useState([]); // 用于存解析后的字幕
   const [currentTime, setCurrentTime] = useState(0); // 用于存储当前播放时间
   const [currentSubtitleIndex, setCurrentSubtitleIndex] = useState(0); // 用于存储当前字幕索引
   const [playbackRate, setPlaybackRate] = useState(1); // 用于播放速度
@@ -95,7 +95,7 @@ function App() {
   function handleSubtitleUpload(event) {
     const file = event.target.files[0]; // 获取文件对象
     if (file) {
-      const reader = new FileReader(); // 创建 FileReader 实例以��取文件内容
+      const reader = new FileReader(); // 创建 FileReader 实例以取文件内容
       reader.onload = (e) => {
         const content = e.target.result; // 读取的文件内容
         const parser = new SrtParser2(); // 创建 SrtParser2 实例以解析字幕文件
@@ -233,7 +233,7 @@ function App() {
       setSubtitles(subtitles); // 设置字幕
       console.log(subtitles);
     } catch (error) {
-      console.error("Error fetching subtitles:", error); // 处理获取字幕的错��
+      console.error("Error fetching subtitles:", error); // 处理获取字幕的错
     }
   };
 
@@ -403,11 +403,41 @@ function App() {
         outputTokens: prev.outputTokens + result.output_tokens
       }));
       
-      // 更新用户统计信息
-      await updateUserStatsToAPI(false, cost, result.input_tokens, result.output_tokens);
-      
+      // 立即显示 AI 响应
       setResponse(result.content);
       setShowResponse(true);
+      
+      // 在后台异步处理统计信息更新和笔记保存
+      (async () => {
+        try {
+          // 获取当前用户数据
+          const userData = await api.getUser(currentUserId);
+          const currentNotebook = userData.data.data.notebook || [];
+          
+          // 创建新的笔记条目
+          const newNote = {
+            word: selectedWord,
+            role: role,
+            response: result.content,
+            timestamp: new Date().toISOString()
+          };
+          
+          // 更新用户数据，包括统计信息和笔记
+          await api.updateUser(currentUserId, {
+            AI_use_times: userData.data.data.AI_use_times + 1,
+            AI_input_tokens: userData.data.data.AI_input_tokens + result.input_tokens,
+            AI_output_tokens: userData.data.data.AI_output_tokens + result.output_tokens,
+            AI_total_cost: userData.data.data.AI_total_cost + cost,
+            wallet: userData.data.data.wallet - cost,
+            notebook: [...currentNotebook, newNote]
+          });
+          
+          console.log('笔记已保存到用户数据');
+        } catch (error) {
+          console.error('保存笔记失败:', error);
+        }
+      })();
+      
     } catch (error) {
       console.error("Error communicating with OpenAI:", error);
     }
@@ -445,16 +475,51 @@ function App() {
         role: "Word_Custom" 
       });
       
+      // 立即更新本地显示
       setAiStats(prev => ({
         callCount: prev.callCount + 1,
         inputTokens: prev.inputTokens + result.input_tokens,
         outputTokens: prev.outputTokens + result.output_tokens
       }));
       
+      // 立即显示响应
       setResponse(result.content);
       setShowResponse(true);
       setShowCustomInput(false);
       setCustomPrompt("");
+      
+      // 在后台异步处理统计信息更新和笔记保存
+      (async () => {
+        try {
+          const userData = await api.getUser(currentUserId);
+          const currentNotebook = userData.data.data.notebook || [];
+          const cost = parseFloat(calculateCost(result.input_tokens, result.output_tokens));
+          
+          // 创建新的笔记条目
+          const newNote = {
+            word: selectedWord,
+            customPrompt: customPrompt,
+            role: "Word_Custom",
+            response: result.content,
+            timestamp: new Date().toISOString()
+          };
+          
+          // 更新用户数据
+          await api.updateUser(currentUserId, {
+            AI_use_times: userData.data.data.AI_use_times + 1,
+            AI_input_tokens: userData.data.data.AI_input_tokens + result.input_tokens,
+            AI_output_tokens: userData.data.data.AI_output_tokens + result.output_tokens,
+            AI_total_cost: userData.data.data.AI_total_cost + cost,
+            wallet: userData.data.data.wallet - cost,
+            notebook: [...currentNotebook, newNote]
+          });
+          
+          console.log('自定义查询笔记已保存');
+        } catch (error) {
+          console.error('保存笔记失败:', error);
+        }
+      })();
+      
     } catch (error) {
       console.error("Error communicating with OpenAI:", error);
     }
@@ -468,7 +533,7 @@ function App() {
   }
 
   function calculateTotalDuration(totalDuration) {
-    const totalMinutes = totalDuration / 60;  //每分钟0.006��元
+    const totalMinutes = totalDuration / 60;  //分钟0.006元
     return totalMinutes.toFixed(2);
   }
 
@@ -499,6 +564,7 @@ function App() {
             await api.updateSubtitle(videoMd5, {
               play_times: play_times + 1
             });
+            console.log('字幕播放次数已更新');
             return;
           } else {
             // 如果是其他用户的字幕，更新播放次数并统计费用
@@ -520,7 +586,7 @@ function App() {
               play_times: play_times + 1,
               users: [...users, currentUserId] // 添加当前用户ID到用户列表
             });
-            
+            console.log('字幕播放次数已更新');
             console.log(`使用其他用户字幕，计费 $${cost}，时长 ${calculateTotalDuration(duration)} 分钟`);
             return;
           }
@@ -565,27 +631,36 @@ function App() {
           const newDuration = result.duration;
           const newCost = parseFloat((calculateTotalDuration(newDuration) * 0.006).toFixed(6));
 
-          // 更新本地显示
+          // 立即更新本地显示
           setWhisperStats(prev => ({
             callCount: prev.callCount + 1,
             totalDuration: prev.totalDuration + newDuration
           }));
-
-          // 更新用户统计信息
-          await updateUserStatsToAPI(true, newCost, 0, 0, newDuration);
           
-          // 保存字幕到数据库
-          await api.createSubtitle({
-            md5: videoMd5,
-            video_duration: newDuration,
-            user_id: currentUserId,
-            subtitle: result.subtitles,
-            play_users_count: 1
-          });
-          
+          // 立即设置字幕显示
           setSubtitles(result.subtitles);
-          console.log("字幕已保存到数据库");
 
+          // 在后台异步处理统计信息更新和字幕上传
+          (async () => {
+            try {
+              // 更新用户统计信息
+              await updateUserStatsToAPI(true, newCost, 0, 0, newDuration);
+              
+              // 保存字幕到数据库
+              await api.createSubtitle({
+                md5: videoMd5,
+                video_duration: newDuration,
+                user_id: currentUserId,
+                subtitle: result.subtitles,
+                play_users_count: 1
+              });
+              
+              console.log('字幕已保存到数据库');
+            } catch (error) {
+              console.error('保存字幕信息失败:', error);
+              // 这里可以添加一些错误提示，但不影响用户继续使用已生成的字幕
+            }
+          })();
         }
       }
     } catch (error) {
@@ -909,7 +984,7 @@ function App() {
               type="text"
               value={subtitleSearchQuery}
               onChange={(e) => setSubtitleSearchQuery(e.target.value)}
-              placeholder="输入字幕名称搜索"
+              placeholder="输入字幕名称搜���"
               className="subtitle-search-input"
               onFocus={() => setIsSearchInputFocused(true)}
               onBlur={() => setIsSearchInputFocused(false)}
