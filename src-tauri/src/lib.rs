@@ -437,11 +437,13 @@ fn get_ffmpeg_path() -> Result<String, String> {
         let current_dir = std::env::current_dir()
             .map_err(|_| "无法获取当前目录".to_string())?;
             
-        #[cfg(target_os = "windows")]
+        #[cfg(target_os = "windows")] // 添加windows条件
         let ffmpeg_name = "ffmpeg-x86_64-pc-windows-msvc.exe";
-        #[cfg(target_os = "macos")]
+        #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
         let ffmpeg_name = "ffmpeg-x86_64-apple-darwin";
-        #[cfg(target_os = "linux")]
+        #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+        let ffmpeg_name = "ffmpeg-aarch64-apple-darwin";
+        #[cfg(target_os = "linux")] // 添加x86_64 linux条件
         let ffmpeg_name = "ffmpeg-x86_64-unknown-linux-gnu";
 
         // 尝试在 binaries 目录查找
@@ -653,7 +655,7 @@ async fn search_subtitles(file_name: String) -> Result<Vec<SubtitleSearchResult>
                             .as_str()?),
                     file_id: file.get("file_id")?  // 从 files 数组中获取 file_id
                         .to_string()
-                        .replace("\"", "")  // 移除可能的引号
+                        .replace("\"", "")  // 移除可��的引号
                 })
             } else {
                 None
