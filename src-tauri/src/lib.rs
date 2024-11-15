@@ -542,8 +542,8 @@ async fn transcribe_audio(audio_base64: String, language: String) -> Result<Tran
         .text("temperature", "0.1") // 降低温度以获得更稳定的结果
         //.text("compression_ratio_threshold", "3.0") // 增加压缩比阈值
         //.text("no_speech_threshold", "0.4") // 增加静音阈值
-        .text("compression_ratio_threshold", "2.0")
-        .text("no_speech_threshold", "0.2")
+        //.text("compression_ratio_threshold", "2.0")
+        //.text("no_speech_threshold", "0.2")
         .text("condition_on_previous_text", "true") // 启用条件文本
         .text("vad_filter", "true"); // 启用VAD过滤
         
