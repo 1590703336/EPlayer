@@ -30,7 +30,7 @@ function App() {
   const [selectedWord, setSelectedWord] = useState(""); // 存储选中的词
   const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0 }); // 控制上下文菜单
   const [showResponse, setShowResponse] = useState(false); // 添加新的状态控制 AI 响应窗口的显示
-  const [showCustomInput, setShowCustomInput] = useState(false);  // 控制自输入显示
+  const [showCustomInput, setShowCustomInput] = useState(false);  // 控制自输入显
   const [customPrompt, setCustomPrompt] = useState("");  // 存储自定义输入内容
   const [response, setResponse] = useState(""); // 添加状态控制 OpenAI 回复
   const [isPlaying, setIsPlaying] = useState(true); // 添加新的状态来控制播放状态
@@ -54,7 +54,7 @@ function App() {
   const [whisperLanguage, setWhisperLanguage] = useState("en"); // 默认英语
   const [isSearchInputFocused, setIsSearchInputFocused] = useState(false);
   const [videoMd5, setVideoMd5] = useState("");
-  const [showRegister, setShowRegister] = useState(true); // 控制注册弹窗显示
+  const [showRegister, setShowRegister] = useState(false); // 控制注册弹窗显示
   const [registerForm, setRegisterForm] = useState({
     username: '',
     email: '',
@@ -64,7 +64,8 @@ function App() {
   const [isRegistering, setIsRegistering] = useState(false);
   const [isRegisterInputFocused, setIsRegisterInputFocused] = useState(false);
   const [loginForm, setLoginForm] = useState({
-    id: '',
+    username: '',
+    password: ''
   });
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [shouldCancelGeneration, setShouldCancelGeneration] = useState(false);
@@ -73,6 +74,7 @@ function App() {
   const [notebook, setNotebook] = useState([]);
   const [isLoadingNotebook, setIsLoadingNotebook] = useState(false);
   const [isMd5Calculated, setIsMd5Calculated] = useState(false);
+  const [token, setToken] = useState(null);
 
   // 获取应用版本号
   useEffect(() => {
@@ -764,32 +766,33 @@ function App() {
     e.preventDefault();
     setIsRegistering(true);
     try {
-      console.log("registerForm:", registerForm);
-      const createUserResult = await api.createUser(registerForm);
-      console.log("createUserResult:", createUserResult);
+      const payload = {
+        username: registerForm.username,
+        password: registerForm.password,
+        email: registerForm.email,
+        native_language: registerForm.native_language
+      };
+      console.log("registerForm:", payload);
+      const createUserResult = await api.createUser(payload);
 
       if (createUserResult.data.success) {
-        setCurrentUserId(createUserResult.data.id);
-        console.log("createUserResult.data.id:", createUserResult.data.id);
-        console.log("注册成功，用户ID:", createUserResult.data.id);
-        setShowRegister(false); // 立即关闭注册窗口
-
-        // 在后台更新用户版本信息
-        api.updateUserVersion(createUserResult.data.id, {
-          version: appVersion,
-          last_login: new Date().toISOString()
-        }).then(updateUserVersionResult => {
-          if (!updateUserVersionResult.data.success) {
-            console.error("更新用户版本失败:", updateUserVersionResult.data.message);
-          } else {
-            console.log("更新用户版本成功,version:", updateUserVersionResult.data.data.version);
-            console.log("更新最后登录时间成功");
-          }
-        }).catch(error => {
-          console.error("更新用户版本出错:", error);
+        // 注册成功后不关闭窗口，而是提示用户登录
+        alert("注册成功，请登录");
+        
+        // 清空注册表单
+        setRegisterForm({
+          username: '',
+          email: '',
+          password: '',
+          native_language: 'en'
         });
         
-
+        // 自动填充登录表单的用户名
+        setLoginForm(prev => ({
+          ...prev,
+          username: payload.username
+        }));
+        
       } else {
         alert(createUserResult.data.message);
       }
@@ -806,32 +809,48 @@ function App() {
     e.preventDefault();
     setIsLoggingIn(true);
     try {
-      const result = await api.loginUser(loginForm.id);
-      const data = result.data;
-      console.log("登录结果:", data.success);
+      console.log("loginForm:", loginForm);
+
+      const result = await api.loginUser({
+        username: loginForm.username,
+        password: loginForm.password
+      });
       
-      if (data.success) {
-        // 先设置用户ID
-        setCurrentUserId(loginForm.id);
+      //console.log("loginResult:", result);
+      
+      if (result.data.success) {
+        // 保存token
+        setToken(result.data.token);
+        // 保存用户ID
+        setCurrentUserId(result.data.user.id);  // 注意这里改为 result.data.user.id
         
+        console.log("currentUserId:", result.data.user.id);
+        console.log("token:", result.data.token);
+
         // 使用立即执行的异步函数来处理后续操作
         (async () => {
           try {
             // 更新用户版本信息
-            const updateUserVersionResult = await api.updateUserVersion(loginForm.id, {
+            const headers = {
+              Authorization: `Bearer ${result.data.token}`
+            };
+            const payload = {
               version: appVersion,
               last_login: new Date().toISOString()
-            });
+            };
+            const updateUserVersionResult = await api.updateUserVersion(payload, headers);
             
+            console.log("updateUserVersionResult:", updateUserVersionResult);
+
             if (!updateUserVersionResult.data.success) {
               console.error("更新用户版本失败:", updateUserVersionResult.data.message);
             } else {
               console.log("更新用户版本成功,version:", updateUserVersionResult.data.data.version);
-              console.log("更新最后登录时间成功");
+              console.log("更新最后登录时间成功,last_login:", updateUserVersionResult.data.data.last_login);
             }
             
             // 预加载笔记数据
-            const userData = await api.getUser(loginForm.id);
+            const userData = await api.getUser(result.data.user.id);
             if (userData.data.success) {
               const userNotebook = userData.data.data.notebook || [];
               // 按时间倒序排序
@@ -847,13 +866,17 @@ function App() {
 
         // 关闭注册窗口
         setShowRegister(false);
-        console.log("登录成功，用户数据:", data.data);
+        console.log("登录成功");
       } else {
-        alert(data.message || "登录失败");
+        alert(result.data.message || "登录失败");
       }
     } catch (error) {
       console.error("登录失败:", error);
-      alert("登录失败: " + error);
+      if (error.response) {
+        alert(error.response.data.message || "登录失败");
+      } else {
+        alert("登录失败: " + error.message);
+      }
     } finally {
       setIsLoggingIn(false);
     }
@@ -927,6 +950,9 @@ function App() {
             <div className="menu-item" onClick={handleGuideClick}>User Guide</div>
             <div className="menu-item" onClick={handleNotebookClick}>
               <i className="fas fa-book"></i> Notebook
+            </div>
+            <div className="menu-item" onClick={() => setShowRegister(true)}>
+              <i className="fas fa-user"></i> 注册/登录
             </div>
           </div>
         )}
@@ -1060,7 +1086,7 @@ function App() {
                 <ul>
                   <li>尝试使用更简短的关键词</li>
                   <li>检查拼写是否正确</li>
-                  <li>尝试使用影片的英文名称</li>
+                  <li>尝试用影片的英文名称</li>
                 </ul>
               </div>
             )
@@ -1260,7 +1286,15 @@ function App() {
       {showRegister && (
         <div className="register-overlay">
           <div className="register-content">
-            <h2>注册账号</h2>
+            <div className="register-header">
+              <h2>注册账号</h2>
+              <button 
+                className="close-button" 
+                onClick={() => setShowRegister(false)}
+              >
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
             <form onSubmit={handleRegister}>
               <div className="form-group">
                 <label htmlFor="username">用户名</label>
@@ -1346,14 +1380,29 @@ function App() {
               <h2>登录账号</h2>
               <form onSubmit={handleLogin}>
                 <div className="form-group">
-                  <label htmlFor="loginId">ID</label>
+                  <label htmlFor="loginUsername">用户名</label>
                   <input
                     type="text"
-                    id="loginId"
-                    value={loginForm.id}
+                    id="loginUsername"
+                    value={loginForm.username}
                     onChange={(e) => setLoginForm({
                       ...loginForm,
-                      id: e.target.value
+                      username: e.target.value
+                    })}
+                    onFocus={() => setIsRegisterInputFocused(true)}
+                    onBlur={() => setIsRegisterInputFocused(false)}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="loginPassword">密码</label>
+                  <input
+                    type="password"
+                    id="loginPassword"
+                    value={loginForm.password}
+                    onChange={(e) => setLoginForm({
+                      ...loginForm,
+                      password: e.target.value
                     })}
                     onFocus={() => setIsRegisterInputFocused(true)}
                     onBlur={() => setIsRegisterInputFocused(false)}

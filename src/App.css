@@ -928,7 +928,7 @@ input[type="file"] {
 
 .form-group {
   display: grid;  /* 使用网格布局 */
-  grid-template-columns: 120px 1fr;  /* 左侧固定宽度，右侧自适应 */
+  grid-template-columns: 120px 1fr;  /* 左��固定宽度，右侧自适应 */
   align-items: center;
   width: 100%;
   margin-bottom: 10px;  /* 减小表单项之间的间距 */
@@ -1197,5 +1197,40 @@ input[type="file"] {
 }
 
 .notebook-header .close-button:hover {
+  color: #bd3535;
+}
+
+/* 添加注册弹窗头部样式 */
+.register-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #333;
+}
+
+.register-header h2 {
+  margin: 0;  /* 移除标题的默认外边距 */
+}
+
+/* 修改关闭按钮样式 */
+.register-header .close-button {
+  background: none;
+  border: none;
+  color: #ff4a4a;
+  cursor: pointer;
+  padding: 5px;
+  font-size: 16px;
+  transition: color 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: auto;  /* 覆盖之前的固定宽度 */
+  height: auto;  /* 覆盖之前的固定高度 */
+  margin: 0;  /* 移除之前的外边距 */
+}
+
+.register-header .close-button:hover {
   color: #bd3535;
 }

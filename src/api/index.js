@@ -10,13 +10,22 @@ api = axios.create({
     baseURL:BASE_URL+'api'
 })
 
+// 添加请求拦截器设置认证头
+// api.interceptors.request.use(config => {
+//   const token = localStorage.getItem('token'); // 从localStorage获取token
+//   if (token) {
+//     config.headers.Authorization = `Bearer ${token}`;
+//   }
+//   return config;
+// });
+
 //user
 export const getUser = (id) => api.get(`/user/${id}`)
 export const updateUser = (id,payload) => api.put(`/user/${id}`,payload)
 //export const updateUserInfo = (payload) => api.post(`/user`,payload)
 export const createUser = (payload) => api.post(`/user`,payload)
-export const loginUser = (id) => api.get(`/user/${id}`)
-export const updateUserVersion = (id,payload) => api.put(`/user/${id}`,payload)
+export const loginUser = (credentials) => api.get(`/user/login?username=${credentials.username}&password=${credentials.password}`) // success
+export const updateUserVersion = (payload, headers) => api.put(`/user/updateVersion`, payload, { headers })  // success
 export const deleteUser = (id) => api.delete(`/user/${id}`)
 
 //subtitle
