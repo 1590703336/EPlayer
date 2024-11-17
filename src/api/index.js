@@ -20,8 +20,9 @@ api = axios.create({
 // });
 
 //user
-export const getUser = (id) => api.get(`/user/${id}`)
-export const updateUser = (id,payload) => api.put(`/user/${id}`,payload)
+export const getUser = (headers) => api.get(`/user/user`, { headers })
+export const getNotebook = (headers) => api.get(`/user/notebook`, { headers }) // success
+export const updateUser = (payload, headers) => api.put(`/user/updateUser`,payload, { headers })
 //export const updateUserInfo = (payload) => api.post(`/user`,payload)
 export const createUser = (payload) => api.post(`/user`,payload)
 export const loginUser = (credentials) => api.get(`/user/login?username=${credentials.username}&password=${credentials.password}`) // success
@@ -35,6 +36,7 @@ export const deleteSubtitle = (id) => api.delete(`/subtitle/${id}`)
 export const updateSubtitle = (id,payload) => api.put(`/subtitle/${id}`,payload)
 
 const apis={
+    getNotebook,
     getUser,
     updateUser,
     //updateUserInfo,

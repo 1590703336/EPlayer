@@ -375,7 +375,10 @@ function App() {
 
     try {
       // 获取当前用户统计数据
-      const userData = await api.getUser(currentUserId);
+      const headers = {
+        Authorization: `Bearer ${token}`
+      };
+      const userData = await api.getUser(headers);
       console.log("Current user data:", userData);
       console.log("wallet:", userData.data.data.wallet);
       
@@ -394,7 +397,7 @@ function App() {
       console.log("Updating stats:", newStats);
 
       // 在后台更新用户数据
-      api.updateUser(currentUserId, newStats)
+      api.updateUser(newStats, headers)
         .then(updateUserResult => {
           if (updateUserResult.data.success) {
             console.log("更新用户数据成功:", updateUserResult.data.data);
@@ -436,7 +439,11 @@ function App() {
       (async () => {
         try {
           // 获取当前用户数据
-          const userData = await api.getUser(currentUserId);
+          const headers = {
+            Authorization: `Bearer ${token}`
+          };
+          console.log("headers:", headers);
+          const userData = await api.getUser(headers);
           const currentNotebook = userData.data.data.notebook || [];
           
           // 创建新的笔记条目
@@ -448,16 +455,21 @@ function App() {
           };
           
           // 更新用户数据，包括统计信息和笔记
-          await api.updateUser(currentUserId, {
+          const payload = {
             AI_use_times: userData.data.data.AI_use_times + 1,
             AI_input_tokens: userData.data.data.AI_input_tokens + result.input_tokens,
             AI_output_tokens: userData.data.data.AI_output_tokens + result.output_tokens,
             AI_total_cost: userData.data.data.AI_total_cost + cost,
             wallet: userData.data.data.wallet - cost,
             notebook: [...currentNotebook, newNote]
-          });
-          
-          console.log('笔记已保存到用户数据');
+          };
+          const updateUserResult = await api.updateUser(payload, headers);
+          console.log("updateUserResult:", updateUserResult);
+          if(updateUserResult.data.success){
+            console.log('笔记已保存到用户数据');
+          }else{
+            console.error('保存笔记失败:', updateUserResult.data.message);
+          }
         } catch (error) {
           console.error('保存笔记失败:', error);
         }
@@ -516,7 +528,11 @@ function App() {
       // 在后台异步处理统计信息更新和笔记保存
       (async () => {
         try {
-          const userData = await api.getUser(currentUserId);
+          const headers = {
+            Authorization: `Bearer ${token}`
+          };
+          console.log("headers:", headers);
+          const userData = await api.getUser(headers);
           const currentNotebook = userData.data.data.notebook || [];
           const cost = parseFloat(calculateCost(result.input_tokens, result.output_tokens));
           
@@ -530,16 +546,22 @@ function App() {
           };
           
           // 更新用户数据
-          await api.updateUser(currentUserId, {
+          const payload = {
             AI_use_times: userData.data.data.AI_use_times + 1,
             AI_input_tokens: userData.data.data.AI_input_tokens + result.input_tokens,
             AI_output_tokens: userData.data.data.AI_output_tokens + result.output_tokens,
             AI_total_cost: userData.data.data.AI_total_cost + cost,
             wallet: userData.data.data.wallet - cost,
             notebook: [...currentNotebook, newNote]
-          });
+          };
+          const updateUserResult = await api.updateUser(payload, headers);
+          console.log("updateUserResult:", updateUserResult);
+          if(updateUserResult.data.success){
+            console.log('自定义查询笔记已保存');
+          }else{
+            console.error('保存笔记失败:', updateUserResult.data.message);
+          }
           
-          console.log('自定义查询笔记已保存');
         } catch (error) {
           console.error('保存笔记失败:', error);
         }
@@ -850,9 +872,12 @@ function App() {
             }
             
             // 预加载笔记数据
-            const userData = await api.getUser(result.data.user.id);
-            if (userData.data.success) {
-              const userNotebook = userData.data.data.notebook || [];
+            //const userData = await api.getUser(result.data.user.id);
+            const getNotebookResult = await api.getNotebook(headers);
+            console.log("getNotebookResult:", getNotebookResult);
+            if (getNotebookResult.data.success) {
+              //const userNotebook = getNotebookResult.data.data.notebook || [];
+              const userNotebook = getNotebookResult.data.data || [];
               // 按时间倒序排序
               setNotebook(userNotebook.sort((a, b) => 
                 new Date(b.timestamp) - new Date(a.timestamp)
@@ -892,9 +917,12 @@ function App() {
   const refreshNotebook = async () => {
     setIsLoadingNotebook(true);
     try {
-      const userData = await api.getUser(currentUserId);
-      if (userData.data.success) {
-        const userNotebook = userData.data.data.notebook || [];
+      const headers = {
+        Authorization: `Bearer ${token}`
+      };
+      const getNotebookResult = await api.getNotebook(headers);
+      if (getNotebookResult.data.success) {
+        const userNotebook = getNotebookResult.data.data || [];
         // 按时间倒序排序
         setNotebook(userNotebook.sort((a, b) => 
           new Date(b.timestamp) - new Date(a.timestamp)
