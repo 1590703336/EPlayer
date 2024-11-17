@@ -607,7 +607,16 @@ function App() {
       let subtitleExists = false;     
       
       try {        
-        const subtitleData = await api.getSubtitle(videoMd5);
+        const headers = {
+          Authorization: `Bearer ${token}`
+        };
+        console.log("headers:", headers);
+        const payload = {
+          md5: videoMd5
+        };
+        const subtitleData = await api.getSubtitle(payload, headers);
+
+        console.log("subtitleData:", subtitleData);
         if (subtitleData.data.success) {
           subtitleExists = true;
           const { user_id, subtitle, play_users_count, play_times, users } = subtitleData.data.data;
@@ -617,9 +626,11 @@ function App() {
           if (user_id === currentUserId || users.includes(currentUserId)) {
             // 如果是当前用户的字幕，直接使用，不统计费用
             console.log('使用已有字幕，无需付费');
-            await api.updateSubtitle(videoMd5, {
+            const payload = {
+              md5: videoMd5,
               play_times: play_times + 1
-            });
+            };
+            await api.updateSubtitle(payload, headers);
             console.log('字幕播放次数已更新');
             return;
           } else {
@@ -637,11 +648,13 @@ function App() {
             await updateUserStatsToAPI(true, cost, 0, 0, duration);
             
             // 更新字幕的播放次数
-            await api.updateSubtitle(videoMd5, {
+            const payload = {
+              md5: videoMd5,
               play_users_count: play_users_count + 1,
               play_times: play_times + 1,
               users: [...users, currentUserId] // 添加当前用户ID到用户列表
-            });
+            };
+            await api.updateSubtitle(payload, headers);
             console.log('字幕播放次数已更新');
             console.log(`使用其他用户字幕，计费 $${cost}，时长 ${calculateTotalDuration(duration)} 分钟`);
             return;
@@ -699,17 +712,21 @@ function App() {
           // 在后台异步处理统计信息更新和字幕上传
           (async () => {
             try {
+
               // 更新用户统计信息
               await updateUserStatsToAPI(true, newCost, 0, 0, newDuration);
               
               // 保存字幕到数据库
+              const headers = {
+                Authorization: `Bearer ${token}`
+              };
               await api.createSubtitle({
                 md5: videoMd5,
                 video_duration: newDuration,
                 user_id: currentUserId,
                 subtitle: result.subtitles,
                 play_users_count: 1
-              });
+              }, headers);
               
               console.log('字幕已保存到数据库');
             } catch (error) {
