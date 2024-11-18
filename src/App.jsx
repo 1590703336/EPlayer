@@ -588,6 +588,7 @@ function App() {
   const generateAISubtitles = async () => {
     if (!uploadedFile || !currentUserId) {
       console.error('没有上传文件或未登录');
+      alert('没有上传文件或未登录');
       return;
     }
 

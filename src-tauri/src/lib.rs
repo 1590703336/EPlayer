@@ -545,7 +545,7 @@ async fn transcribe_audio(audio_base64: String, language: String) -> Result<Tran
         //.text("compression_ratio_threshold", "2.0")
         //.text("no_speech_threshold", "0.2")
         .text("condition_on_previous_text", "true") // 启用条件文本
-        .text("vad_filter", "true"); // 启用VAD过滤
+        .text("vad_filter", "true"); // 启用VAD过滤;
         
 
     // 发送请求到Whisper API
