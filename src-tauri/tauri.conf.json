@@ -20,6 +20,22 @@
         "https://gitee.com/xzkids/eplayer-assets/raw/master/version.json"
       ],
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDc4ODVEOTNFRTA5M0E1MzQKUldRMHBaUGdQdG1GZU1MQlFsWTFnZVFyYVBHMzZEanNPbUZncThJRGk2WmhzOVNiYlBYcHpVMEMK"
+    },
+    "fs": {
+      "all": true,
+      "readFile": true,
+      "writeFile": true,
+      "readDir": true,
+      "copyFile": true,
+      "createDir": true,
+      "removeDir": true,
+      "removeFile": true,
+      "renameFile": true,
+      "exists": true
+    },
+    "protocol": {
+        "asset": true,
+        "assetScope": ["$APPDATA/assets/*"]
     }
   },
   "app": {
@@ -37,7 +53,7 @@
         "enable": true,
         "scope": ["**", "**/**"]
       }
-    }
+    }    
   },
   "bundle": {
     "createUpdaterArtifacts": true,

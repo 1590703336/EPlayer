@@ -5,10 +5,12 @@ import "./App.css";
 import SrtParser2 from "srt-parser-2"; // 导入 srt-parser-2 以处理字幕文件的解析
 import { check } from '@tauri-apps/plugin-updater';
 import { relaunch } from '@tauri-apps/plugin-process';
-import { open } from '@tauri-apps/plugin-shell';  // 导入 open 函数用于打开链接
+import { open as openUrl } from '@tauri-apps/plugin-shell';   // 用于打开URL
 import { getVersion } from '@tauri-apps/api/app';  // 导入获取版本号的函数
 import guideImage1 from './assets/guide1.png';
 import api from './api';
+import { open as openDialog } from "@tauri-apps/plugin-dialog";
+import { convertFileSrc } from '@tauri-apps/api/core';
 
 function App() {
   // 定义各种状态变量来存储视频文件路径、字幕、当前播放时间、字幕索引、播放速度等
@@ -257,42 +259,45 @@ function App() {
   };
 
   // 处理本地视频文件上传
-  const handleLocalVideoUpload = async (event) => {
-    const file = event.target.files[0];
-    if (file) {
-        try {
-            // 先重置状态
-            setIsMd5Calculated(false);
-            setVideoMd5("");
-            
-            // 设置文件相关状态
-            setUploadedFile(file);
-            setVideoUrl(URL.createObjectURL(file));
-            setIsLocalVideo(true);
-            setIsNetworkVideo(false);
-            setIsPlaying(true);
+  const handleLocalVideoUpload = async () => {
+    try {
+      const path = await openDialog({
+        directory: false,
+        multiple: false,
+        filters: [{
+          name: 'Video',
+          extensions: ['mp4', 'webm', 'avi', 'mkv']
+        }]
+      });
+      console.log("path:", path);
+      
+      if (path) {
+        const fileUrl = convertFileSrc(path);        
+        setVideoUrl(fileUrl);
+        setIsLocalVideo(true);
+        setIsNetworkVideo(false);
+        setIsPlaying(true);
 
-            // 计算MD5
-            const base64 = await fileToBase64(file);
-            const md5 = await invoke("calculate_md5", { videoBase64: base64 });
-            
-            // 使用Promise.all确保两个状态都更新完成
-            await Promise.all([
-                new Promise(resolve => {
-                    setVideoMd5(md5);
-                    resolve();
-                }),
-                new Promise(resolve => {
-                    setIsMd5Calculated(true);
-                    resolve();
-                })
-            ]);
-            
-            console.log("视频MD5计算完成:", md5, "状态已更新");
-        } catch (error) {
-            console.error("计算MD5失败:", error);
-            setIsMd5Calculated(false);
-        }
+        // // 计算MD5
+        // const base64 = await fileToBase64(file);
+        // const md5 = await invoke("calculate_md5", { videoBase64: base64 });
+        
+        // // 使用Promise.all确保两个状态都更新完成
+        // await Promise.all([
+        //     new Promise(resolve => {
+        //         setVideoMd5(md5);
+        //         resolve();
+        //     }),
+        //     new Promise(resolve => {
+        //         setIsMd5Calculated(true);
+        //         resolve();
+        //     })
+        // ]);
+        
+        // console.log("视频MD5计算完成:", md5, "状态已更新");
+      }
+    } catch (error) {
+      console.error("处理文件失败:", error);
     }
   };
 
@@ -328,7 +333,7 @@ function App() {
 
   // 处理官网点击
   const handleWebsiteClick = async () => {
-    await open('https://www.eplayer.fun/');
+    await openUrl('https://www.eplayer.fun/');
     setShowAboutMenu(false);
   };
 
@@ -1185,14 +1190,12 @@ function App() {
                 </form>
 
                 <div className="file-input-wrapper">
-                  <label htmlFor="local-video-input">Select local video file:</label>
-                  <input 
-                    id="local-video-input"
-                    type="file"
-                    accept="video/*"
-                    onChange={handleLocalVideoUpload}
+                  <button 
+                    onClick={handleLocalVideoUpload}
                     disabled={isExtracting}
-                  />
+                  >
+                    选择本地视频文件
+                  </button>
                   {isExtracting && <span className="extracting-status">正在提取音频...</span>}
                 </div>
               </>
