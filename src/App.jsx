@@ -857,7 +857,7 @@ function App() {
       const createUserResult = await api.createUser(payload);
 
       if (createUserResult.data.success) {
-        // 注册成功后不关闭窗��，而是提示用户登��
+        // 注册成功后不关闭窗口，而是提示用户登录
         alert("注册成功，请登录");
         
         // 清空注册表单
@@ -1245,13 +1245,32 @@ function App() {
           {/* 如果是本地视频，显示字幕文件输入选项 */}
           {isLocalVideo && (
             <div className="file-input-wrapper">
-              <label htmlFor="subtitle-input">Select subtitle file:</label>  {/* 注释：选择字幕文件 */}
-              <input style={{ width: 150 }}
-                id="subtitle-input"
-                type="file"
-                accept=".srt,.vtt"
-                onChange={handleSubtitleUpload}
-              />
+              <button 
+                onClick={async () => {
+                  try {
+                    const path = await openDialog({
+                      directory: false,
+                      multiple: false,
+                      filters: [{
+                        name: 'Subtitle',
+                        extensions: ['srt', 'vtt']
+                      }]
+                    });
+                    
+                    if (path) {
+                      // 读取字幕文件内容
+                      const content = await invoke('read_file', { path });
+                      const parser = new SrtParser2();
+                      const parsedSubtitles = parser.fromSrt(content);
+                      setSubtitles(parsedSubtitles);
+                    }
+                  } catch (error) {
+                    console.error("处理字幕文件失败:", error);
+                  }
+                }}
+              >
+                选择字幕文件
+              </button>
             </div>
           )}
         </div>

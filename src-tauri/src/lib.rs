@@ -1109,6 +1109,12 @@ struct UserDataDetails {
     wallet: f64,
 }
 
+#[tauri::command]
+fn read_file(path: String) -> Result<String, String> {
+    std::fs::read_to_string(path)
+        .map_err(|e| format!("读取文件失败: {}", e))
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -1129,7 +1135,8 @@ pub fn run() {
             update_user_version,
             login_user,        // 添加登录命令
             update_user_stats, // 添加更新用户统计信息的命令
-            get_user_data      // 添加新命令
+            get_user_data,      // 添加新命令
+            read_file,
         ])
         .plugin(tauri_plugin_log::Builder::new().build())
         .run(tauri::generate_context!())
