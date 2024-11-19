@@ -596,10 +596,10 @@ function App() {
 
   // 修改生成 AI 字幕的函数
   const generateAISubtitles = async () => {
-    if (!uploadedFile || !currentUserId) {
-      console.error('没有上传文件或未登录');
-      alert('没有上传文件或未登录');
-      return;
+    if (!uploadedFilePath || !currentUserId) {
+        console.error('没有上传文件或未登录');
+        alert('没有上传文件或未登录');
+        return;
     }
 
     //等待视频MD5计算完成
@@ -690,24 +690,31 @@ function App() {
           return;
         }
 
-        const audioData = await invoke('extract_audio', { 
-          //videoPath: await fileToBase64(uploadedFile) 
-          videoPath: uploadedFilePath
-        });
-        console.log('音频提取完成');
+        // const audioData = await invoke('extract_audio', { 
+        //   //videoPath: await fileToBase64(uploadedFile) 
+        //   videoPath: uploadedFilePath
+        // });
+        // console.log('音频提取完成');
         
-        if (shouldCancelGeneration) {
-          console.log('字幕生成已取消');
-          return;
-        }
+        // if (shouldCancelGeneration) {
+        //   console.log('字幕生成已取消');
+        //   return;
+        // }
 
-        console.log('开始转写音频...');
+        // console.log('开始转写音频...');
+        // const result = await invoke('transcribe_audio', { 
+        //   audioBase64: audioData,
+        //   language: whisperLanguage
+        // });
+        // console.log('音频转写完成:', result);
         const result = await invoke('transcribe_audio', { 
-          audioBase64: audioData,
+          videoPath: uploadedFilePath,
           language: whisperLanguage
         });
+
         console.log('音频转写完成:', result);
-        
+
+
         if (!shouldCancelGeneration) {
           const newDuration = result.duration;
           const newCost = parseFloat((calculateTotalDuration(newDuration) * 0.006).toFixed(6));
@@ -749,10 +756,10 @@ function App() {
         }
       }
     } catch (error) {
-      if (!shouldCancelGeneration) {
-        console.error('生成字幕失败:', error);
-        alert('生成字幕失败: ' + error.message);
-      }
+        if (!shouldCancelGeneration) {
+            console.error('生成字幕失败:', error);
+            alert('生成字幕失败: ' + error.message);
+        }
     } finally {
       setIsGeneratingSubtitles(false);
     }

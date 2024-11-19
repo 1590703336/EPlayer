@@ -360,8 +360,8 @@ fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
 }
 
-#[tauri::command]
-async fn extract_audio(video_path: String) -> Result<String, String> {
+// 修改为内部函数,不再暴露给前端
+async fn extract_audio_internal(video_path: &str) -> Result<Vec<u8>, String> {
     let ffmpeg_path = get_ffmpeg_path()?;
     println!("ffmpeg路径: {}", ffmpeg_path);
 
@@ -374,7 +374,7 @@ async fn extract_audio(video_path: String) -> Result<String, String> {
     println!("输入视频路径: {}", video_path);
     println!("输出音频路径: {}", temp_output_str);
 
-    // 直接使用视频文件路径执行 ffmpeg 命令
+    // 执行 ffmpeg 命令
     let output = Command::new(&ffmpeg_path)
         .args(&[
             "-hwaccel",
@@ -382,12 +382,9 @@ async fn extract_audio(video_path: String) -> Result<String, String> {
             "-i",
             &video_path, // 直接使用视频文件路径
             "-vn",
-            "-acodec",
-            "mp3",
-            "-f",
-            "mp3",
-            "-threads",
-            "0",
+            "-acodec", "mp3",
+            "-f", "mp3",
+            "-threads", "0",
             &temp_output_str,
         ])
         .output()
@@ -409,9 +406,7 @@ async fn extract_audio(video_path: String) -> Result<String, String> {
     // 清理临时文件
     let _ = std::fs::remove_file(&temp_output);
 
-    // 转换为base64
-    let base64_audio = base64::encode(&buffer);
-    Ok(format!("data:audio/mp3;base64,{}", base64_audio))
+    Ok(buffer)
 }
 
 fn get_ffmpeg_path() -> Result<String, String> {
@@ -486,18 +481,14 @@ struct TranscriptionResult {
     duration: f64, // 添加音频时长字段
 }
 
+// 修改转写函数,直接接收视频路径
 #[tauri::command]
-async fn transcribe_audio(audio_base64: String, language: String) -> Result<TranscriptionResult, String> {
+async fn transcribe_audio(video_path: String, language: String) -> Result<TranscriptionResult, String> {
+    // 先提取音频
+    let audio_bytes = extract_audio_internal(&video_path).await?;
+    
     let auth = Auth::from_env().map_err(|e| format!("API密钥错误: {:?}", e))?;
     let client = reqwest::Client::new();
-
-    // 从base64中提取实际的音频数据
-    let audio_data = audio_base64
-        .split("base64,")
-        .nth(1)
-        .ok_or("无效的音频数据格式")?;
-
-    let audio_bytes = base64::decode(audio_data).map_err(|e| format!("解码音频数据失败: {}", e))?;
 
     // 创建multipart form
     let prompt = match language.as_str() {
@@ -526,7 +517,7 @@ async fn transcribe_audio(audio_base64: String, language: String) -> Result<Tran
         //.text("compression_ratio_threshold", "2.0")
         //.text("no_speech_threshold", "0.2")
         .text("condition_on_previous_text", "true") // 启用条件文本
-        .text("vad_filter", "true"); // 启用VAD过滤;
+        .text("vad_filter", "true"); // 启用VAD过滤
 
     // 发送请求到Whisper API
     let response = client
@@ -1129,7 +1120,7 @@ pub fn run() {
             greet,
             get_transcript,
             communicate_with_openai,
-            extract_audio,
+            //extract_audio,
             transcribe_audio,
             search_subtitles,
             download_subtitle,
