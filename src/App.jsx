@@ -150,8 +150,8 @@ function App() {
   // 修改键盘事件处理函数
   useEffect(() => {
     const handleKeyDown = (event) => {
-      // 如果注册窗口显示、搜索输入框聚焦或注册表单输入框聚焦，不处理快捷键
-      if (showRegister || isSearchInputFocused || isRegisterInputFocused) {
+      // 添加 isGeneratingSubtitles 到判断条件中
+      if (showRegister || isSearchInputFocused || isRegisterInputFocused || isGeneratingSubtitles) {
         return;
       }
 
@@ -192,8 +192,9 @@ function App() {
     currentSubtitleIndex, 
     isSearchInputFocused, 
     showRegister, 
-    isRegisterInputFocused  // 添加这个依赖
-  ]); // 确保包含所有需要的依赖
+    isRegisterInputFocused,
+    isGeneratingSubtitles  // 添加到依赖数组
+  ]);
 
   // 处理当前播放时间的变化来更新当前的字幕索引
   useEffect(() => {
