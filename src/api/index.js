@@ -19,6 +19,32 @@ api = axios.create({
 //   return config;
 // });
 
+// 添加重试函数
+async function retryOperation(operation, maxAttempts = 3, delay = 1000) {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await operation();
+    } catch (error) {
+      // 如果是最后一次尝试，直接抛出错误
+      if (attempt === maxAttempts) {
+        throw error;
+      }
+
+      // 检查是否是网络错误或服务器错误
+      if (error.response?.status >= 500 || error.code === 'ECONNABORTED' || error.code === 'ERR_NETWORK') {
+        console.log(`尝试第 ${attempt} 次失败，${delay/1000}秒后重试...`, error);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        // 每次重试增加延迟时间
+        delay *= 2;
+        continue;
+      }
+
+      // 其他类型的错误直接抛出
+      throw error;
+    }
+  }
+}
+
 //user
 export const getUser = (headers) => api.get(`/user/user`, { headers }) // success
 export const getNotebook = (headers) => api.get(`/user/notebook`, { headers }) // success
@@ -33,7 +59,7 @@ export const deleteUser = (id) => api.delete(`/user/${id}`)
 export const getSubtitle = (payload, headers) => api.get(`/subtitle/getSubtitle?md5=${payload.md5}`, { headers })  //叫id还是md5都一样  success
 export const createSubtitle = (payload, headers) => api.post(`/subtitle`,payload, { headers})
 export const deleteSubtitle = (id, headers) => api.delete(`/subtitle/${id}`, { headers })
-export const updateSubtitle = (payload, headers) => api.put(`/subtitle/updateSubtitle?md5=${payload.md5}`,payload, { headers })
+export const updateSubtitle = (payload, headers) => api.put(`/subtitle/updateSubtitle?md5=${payload.md5}`,payload, { headers })  // success
 
 const apis={
     getNotebook,

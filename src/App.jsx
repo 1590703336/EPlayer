@@ -428,67 +428,74 @@ function App() {
 
   // 修改处理菜单项点击的函数
   const handleMenuItemClick = async (role) => {
+    // 检查是否登录
+    if (!currentUserId || !token) {
+        alert('请先登录后再使用查词功能');
+        setContextMenu({ ...contextMenu, visible: false });
+        setShowRegister(true); // 显示登录窗口
+        return;
+    }
+
     try {
-      const result = await invoke("communicate_with_openai", { 
-        prompt: selectedWord,
-        role: role 
-      });
-      
-      const cost = parseFloat(calculateCost(result.input_tokens, result.output_tokens));
-      
-      // 更新本地统计显示
-      setAiStats(prev => ({
-        callCount: prev.callCount + 1,
-        inputTokens: prev.inputTokens + result.input_tokens,
-        outputTokens: prev.outputTokens + result.output_tokens
-      }));
-      
-      // 立即显示 AI 响应
-      setResponse(result.content);
-      setShowResponse(true);
-      
-      // 在后台异步处理统计信息更新和笔记保存
-      (async () => {
-        try {
-          // 获取当前用户数据
-          const headers = {
-            Authorization: `Bearer ${token}`
-          };
-          console.log("headers:", headers);
-          const userData = await api.getUser(headers);
-          const currentNotebook = userData.data.data.notebook || [];
-          
-          // 创建新的笔记条目
-          const newNote = {
-            word: selectedWord,
-            role: role,
-            response: result.content,
-            timestamp: new Date().toISOString()
-          };
-          
-          // 更新用户数据，包括统计信息和笔记
-          const payload = {
-            AI_use_times: userData.data.data.AI_use_times + 1,
-            AI_input_tokens: userData.data.data.AI_input_tokens + result.input_tokens,
-            AI_output_tokens: userData.data.data.AI_output_tokens + result.output_tokens,
-            AI_total_cost: userData.data.data.AI_total_cost + cost,
-            wallet: userData.data.data.wallet - cost,
-            notebook: [...currentNotebook, newNote]
-          };
-          const updateUserResult = await api.updateUser(payload, headers);
-          console.log("updateUserResult:", updateUserResult);
-          if(updateUserResult.data.success){
-            console.log('笔记已保存到用户数据');
-          }else{
-            console.error('保存笔记失败:', updateUserResult.data.message);
-          }
-        } catch (error) {
-          console.error('保存笔记失败:', error);
-        }
-      })();
-      
+        const result = await invoke("communicate_with_openai", { 
+            prompt: selectedWord,
+            role: role 
+        });
+        
+        const cost = parseFloat(calculateCost(result.input_tokens, result.output_tokens));
+        
+        // 更新本地统计显示
+        setAiStats(prev => ({
+            callCount: prev.callCount + 1,
+            inputTokens: prev.inputTokens + result.input_tokens,
+            outputTokens: prev.outputTokens + result.output_tokens
+        }));
+        
+        // 立即显示 AI 响应
+        setResponse(result.content);
+        setShowResponse(true);
+        
+        // 在后台异步处理统计信息更新和笔记保存
+        (async () => {
+            try {
+                // 获取当前用户数据
+                const headers = {
+                    Authorization: `Bearer ${token}`
+                };
+                const userData = await api.getUser(headers);
+                const currentNotebook = userData.data.data.notebook || [];
+                
+                // 创建新的笔记条目
+                const newNote = {
+                    word: selectedWord,
+                    role: role,
+                    response: result.content,
+                    timestamp: new Date().toISOString()
+                };
+                
+                // 更新用户数据
+                const payload = {
+                    AI_use_times: userData.data.data.AI_use_times + 1,
+                    AI_input_tokens: userData.data.data.AI_input_tokens + result.input_tokens,
+                    AI_output_tokens: userData.data.data.AI_output_tokens + result.output_tokens,
+                    AI_total_cost: userData.data.data.AI_total_cost + cost,
+                    wallet: userData.data.data.wallet - cost,
+                    notebook: [...currentNotebook, newNote]
+                };
+                const updateUserResult = await api.updateUser(payload, headers);
+                if(updateUserResult.data.success){
+                    console.log('笔记已保存到用户数据');
+                }else{
+                    console.error('保存笔记失败:', updateUserResult.data.message);
+                }
+            } catch (error) {
+                console.error('保存笔记失败:', error);
+            }
+        })();
+        
     } catch (error) {
-      console.error("Error communicating with OpenAI:", error);
+        console.error("Error communicating with OpenAI:", error);
+        alert(error.toString());
     }
     setContextMenu({ ...contextMenu, visible: false });
   };
@@ -517,70 +524,80 @@ function App() {
   // 修改处理自定义输入提交的函数
   const handleCustomSubmit = async (e) => {
     e.preventDefault();
+    
+    // 检查是否登录
+    if (!currentUserId || !token) {
+        alert('请先登录后再使用查词功能');
+        setShowCustomInput(false);
+        setShowRegister(true); // 显示登录窗口
+        return;
+    }
+
     try {
-      const combinedPrompt = `${selectedWord}的${customPrompt}`;
-      const result = await invoke("communicate_with_openai", { 
-        prompt: combinedPrompt,
-        role: "Word_Custom" 
-      });
-      
-      // 立即更新本地显示
-      setAiStats(prev => ({
-        callCount: prev.callCount + 1,
-        inputTokens: prev.inputTokens + result.input_tokens,
-        outputTokens: prev.outputTokens + result.output_tokens
-      }));
-      
-      // 立即显示响应
-      setResponse(result.content);
-      setShowResponse(true);
-      setShowCustomInput(false);
-      setCustomPrompt("");
-      
-      // 在后台异步处理统计信息更新和笔记保存
-      (async () => {
-        try {
-          const headers = {
-            Authorization: `Bearer ${token}`
-          };
-          console.log("headers:", headers);
-          const userData = await api.getUser(headers);
-          const currentNotebook = userData.data.data.notebook || [];
-          const cost = parseFloat(calculateCost(result.input_tokens, result.output_tokens));
-          
-          // 创建新的笔记条目
-          const newNote = {
-            word: selectedWord,
-            customPrompt: customPrompt,
-            role: "Word_Custom",
-            response: result.content,
-            timestamp: new Date().toISOString()
-          };
-          
-          // 更新用户数据
-          const payload = {
-            AI_use_times: userData.data.data.AI_use_times + 1,
-            AI_input_tokens: userData.data.data.AI_input_tokens + result.input_tokens,
-            AI_output_tokens: userData.data.data.AI_output_tokens + result.output_tokens,
-            AI_total_cost: userData.data.data.AI_total_cost + cost,
-            wallet: userData.data.data.wallet - cost,
-            notebook: [...currentNotebook, newNote]
-          };
-          const updateUserResult = await api.updateUser(payload, headers);
-          console.log("updateUserResult:", updateUserResult);
-          if(updateUserResult.data.success){
-            console.log('自定义查询笔记已保存');
-          }else{
-            console.error('保存笔记失败:', updateUserResult.data.message);
-          }
-          
-        } catch (error) {
-          console.error('保存笔记失败:', error);
-        }
-      })();
-      
+        const combinedPrompt = `${selectedWord}的${customPrompt}`;
+        const result = await invoke("communicate_with_openai", { 
+            prompt: combinedPrompt,
+            role: "Word_Custom" 
+        });
+        
+        // 立即更新本地显示
+        setAiStats(prev => ({
+            callCount: prev.callCount + 1,
+            inputTokens: prev.inputTokens + result.input_tokens,
+            outputTokens: prev.outputTokens + result.output_tokens
+        }));
+        
+        // 立即显示响应
+        setResponse(result.content);
+        setShowResponse(true);
+        setShowCustomInput(false);
+        setCustomPrompt("");
+        
+        // 在后台异步处理统计信息更新和笔记保存
+        (async () => {
+            try {
+                const headers = {
+                    Authorization: `Bearer ${token}`
+                };
+                console.log("headers:", headers);
+                const userData = await api.getUser(headers);
+                const currentNotebook = userData.data.data.notebook || [];
+                const cost = parseFloat(calculateCost(result.input_tokens, result.output_tokens));
+                
+                // 创建新的笔记条目
+                const newNote = {
+                    word: selectedWord,
+                    customPrompt: customPrompt,
+                    role: "Word_Custom",
+                    response: result.content,
+                    timestamp: new Date().toISOString()
+                };
+                
+                // 更新用户数据
+                const payload = {
+                    AI_use_times: userData.data.data.AI_use_times + 1,
+                    AI_input_tokens: userData.data.data.AI_input_tokens + result.input_tokens,
+                    AI_output_tokens: userData.data.data.AI_output_tokens + result.output_tokens,
+                    AI_total_cost: userData.data.data.AI_total_cost + cost,
+                    wallet: userData.data.data.wallet - cost,
+                    notebook: [...currentNotebook, newNote]
+                };
+                const updateUserResult = await api.updateUser(payload, headers);
+                console.log("updateUserResult:", updateUserResult);
+                if(updateUserResult.data.success){
+                    console.log('自定义查询笔记已保存');
+                }else{
+                    console.error('保存笔记失败:', updateUserResult.data.message);
+                }
+                
+            } catch (error) {
+                console.error('保存笔记失败:', error);
+            }
+        })();
+        
     } catch (error) {
-      console.error("Error communicating with OpenAI:", error);
+        console.error("Error communicating with OpenAI:", error);
+        alert(error.toString());
     }
   };
 
@@ -598,172 +615,176 @@ function App() {
 
   // 修改生成 AI 字幕的函数
   const generateAISubtitles = async () => {
-    if (!uploadedFilePath || !currentUserId) {
-        console.error('没有上传文件或未登录');
-        alert('没有上传文件或未登录');
+    // 检查是否登录
+    if (!currentUserId || !token) {
+        alert('请先登录后再使用AI字幕功能');
+        setShowRegister(true); // 显示登录窗口
+        return;
+    }
+
+    if (!uploadedFilePath) {
+        console.error('没有上传文件');
+        alert('请先选择视频文件');
         return;
     }
 
     //等待视频MD5计算完成
     if(videoMd5===""){
-      console.error('视频MD5未计算');
-      alert('视频MD5正在计算中，请稍后再试');
-
-      return;
+        console.error('视频MD5未计算');
+        alert('视频MD5正在计算中，请稍后再试');
+        return;
     }
 
     setIsGeneratingSubtitles(true); // 设置生成状态
     setShouldCancelGeneration(false); // 设置取消标志
 
     try {
-      // 首先检查数据库中是否存在字幕
-      let subtitleExists = false;     
-      
-      try {        
-        const headers = {
-          Authorization: `Bearer ${token}`
-        };
-        console.log("headers:", headers);
-        const payload = {
-          md5: videoMd5
-        };
-        const subtitleData = await api.getSubtitle(payload, headers);
-
-        console.log("subtitleData:", subtitleData);
-        if (subtitleData.data.success) {
-          subtitleExists = true;
-          const { user_id, subtitle, play_users_count, play_times, users } = subtitleData.data.data;
-          // 解析并设置字幕
-          setSubtitles(subtitle);
-          
-          if (user_id === currentUserId || users.includes(currentUserId)) {
-            // 如果是当前用户的字幕，直接使用，不统计费用
-            console.log('使用已有字幕，无需付费');
-            const payload = {
-              md5: videoMd5,
-              play_times: play_times + 1
-            };
-            await api.updateSubtitle(payload, headers);
-            console.log('字幕播放次数已更新');
-            return;
-          } else {
-            // 如果是其他用户的字幕，更新播放次数并统计费用
-            const duration = subtitleData.data.data.video_duration;
-            const cost = parseFloat((calculateTotalDuration(duration) * 0.006).toFixed(6));
-            
-            // 更新本地显示的统计信息
-            setWhisperStats(prev => ({
-              callCount: prev.callCount + 1,
-              totalDuration: prev.totalDuration + duration
-            }));
-            
-            // 更新用户统计信息
-            await updateUserStatsToAPI(true, cost, 0, 0, duration);
-            
-            // 更新字幕的播放次数
-            const payload = {
-              md5: videoMd5,
-              play_users_count: play_users_count + 1,
-              play_times: play_times + 1,
-              users: [...users, currentUserId] // 添加当前用户ID到用户列表
-            };
-            await api.updateSubtitle(payload, headers);
-            console.log('字幕播放次数已更新');
-            console.log(`使用其他用户字幕，计费 $${cost}，时长 ${calculateTotalDuration(duration)} 分钟`);
-            return;
-          }
-        }
-      } catch (error) {
-        // 如果是404错误，说明字幕不存在，继续执行生成字幕的流程
-        if (error.response && error.response.status === 404) {
-          console.log('字幕不存在，开始生成新字幕...');
-          subtitleExists = false;
-        } else {
-          // 如果是其他错误，则抛出异常
-          throw error;
-        }
-      }
-
-      // 如果字幕不存在，则生成新的字幕
-      if (!subtitleExists) {
-        console.log('开始提取音频...');
-        if (shouldCancelGeneration) {
-          console.log('字幕生成已取消');
-          return;
-        }
-
-        // const audioData = await invoke('extract_audio', { 
-        //   //videoPath: await fileToBase64(uploadedFile) 
-        //   videoPath: uploadedFilePath
-        // });
-        // console.log('音频提取完成');
+        // 首先检查数据库中是否存在字幕
+        let subtitleExists = false;     
         
-        // if (shouldCancelGeneration) {
-        //   console.log('字幕生成已取消');
-        //   return;
-        // }
-
-        // console.log('开始转写音频...');
-        // const result = await invoke('transcribe_audio', { 
-        //   audioBase64: audioData,
-        //   language: whisperLanguage
-        // });
-        // console.log('音频转写完成:', result);
-        const result = await invoke('transcribe_audio', { 
-          videoPath: uploadedFilePath,
-          language: whisperLanguage
-        });
-
-        console.log('音频转写完成:', result);
-
-
-        if (!shouldCancelGeneration) {
-          const newDuration = result.duration;
-          const newCost = parseFloat((calculateTotalDuration(newDuration) * 0.006).toFixed(6));
-
-          // 立即更新本地显示
-          setWhisperStats(prev => ({
-            callCount: prev.callCount + 1,
-            totalDuration: prev.totalDuration + newDuration
-          }));
-          
-          // 立即设置字幕显示
-          setSubtitles(result.subtitles);
-
-          // 在后台异步处理统计信息更新和字幕上传
-          (async () => {
-            try {
-
-              // 更新用户统计信息
-              await updateUserStatsToAPI(true, newCost, 0, 0, newDuration);
-              
-              // 保存字幕到数据库
-              const headers = {
+        try {        
+            const headers = {
                 Authorization: `Bearer ${token}`
-              };
-              await api.createSubtitle({
-                md5: videoMd5,
-                video_duration: newDuration,
-                user_id: currentUserId,
-                subtitle: result.subtitles,
-                play_users_count: 1
-              }, headers);
-              
-              console.log('字幕已保存到数据库');
-            } catch (error) {
-              console.error('保存字幕信息失败:', error);
-              // 这里可以添加一些错误提示，但不影响用户继续使用已生成的字幕
+            };
+            console.log("headers:", headers);
+            const payload = {
+                md5: videoMd5
+            };
+            const subtitleData = await api.getSubtitle(payload, headers);
+
+            console.log("subtitleData:", subtitleData);
+            if (subtitleData.data.success) {
+                subtitleExists = true;
+                const { user_id, subtitle, play_users_count, play_times, users } = subtitleData.data.data;
+                // 解析并设置字幕
+                setSubtitles(subtitle);
+                
+                if (user_id === currentUserId || users.includes(currentUserId)) {
+                    // 如果是当前用户的字幕，直接使用，不统计费用
+                    console.log('使用已有字幕，无需付费');
+                    const payload = {
+                        md5: videoMd5,
+                        play_times: play_times + 1
+                    };
+                    await api.updateSubtitle(payload, headers);
+                    console.log('字幕播放次数已更新');
+                    return;
+                } else {
+                    // 如果是其他用户的字幕，更新播放次数并统计费用
+                    const duration = subtitleData.data.data.video_duration;
+                    const cost = parseFloat((calculateTotalDuration(duration) * 0.006).toFixed(6));
+                    
+                    // 更新本地显示的统计信息
+                    setWhisperStats(prev => ({
+                        callCount: prev.callCount + 1,
+                        totalDuration: prev.totalDuration + duration
+                    }));
+                    
+                    // 更新用户统计信息
+                    await updateUserStatsToAPI(true, cost, 0, 0, duration);
+                    
+                    // 更新字幕的播放次数
+                    const payload = {
+                        md5: videoMd5,
+                        play_users_count: play_users_count + 1,
+                        play_times: play_times + 1,
+                        users: [...users, currentUserId] // 添加当前用户ID到用户列表
+                    };
+                    await api.updateSubtitle(payload, headers);
+                    console.log('字幕播放次数已更新');
+                    console.log(`使用其他用户字幕，计费 $${cost}，时长 ${calculateTotalDuration(duration)} 分钟`);
+                    return;
+                }
             }
-          })();
+        } catch (error) {
+            if (error.response && error.response.status === 404) {
+                console.log('字幕不存在，开始生成新字幕...');
+                subtitleExists = false;
+            } else {
+                throw error;
+            }
         }
-      }
+
+        // 如果字幕不存在，则生成新的字幕
+        if (!subtitleExists) {
+            console.log('开始提取音频...');
+            if (shouldCancelGeneration) {
+                console.log('字幕生成已取消');
+                return;
+            }
+
+            // const audioData = await invoke('extract_audio', { 
+            //   //videoPath: await fileToBase64(uploadedFile) 
+            //   videoPath: uploadedFilePath
+            // });
+            // console.log('音频提取完成');
+            
+            // if (shouldCancelGeneration) {
+            //   console.log('字幕生成已取消');
+            //   return;
+            // }
+
+            // console.log('开始转写音频...');
+            // const result = await invoke('transcribe_audio', { 
+            //   audioBase64: audioData,
+            //   language: whisperLanguage
+            // });
+            // console.log('音频转写完成:', result);
+            const result = await invoke('transcribe_audio', { 
+                videoPath: uploadedFilePath,
+                language: whisperLanguage
+            });
+
+            console.log('音频转写完成:', result);
+
+
+            if (!shouldCancelGeneration) {
+                const newDuration = result.duration;
+                const newCost = parseFloat((calculateTotalDuration(newDuration) * 0.006).toFixed(6));
+
+                // 立即更新本地显示
+                setWhisperStats(prev => ({
+                    callCount: prev.callCount + 1,
+                    totalDuration: prev.totalDuration + newDuration
+                }));
+                
+                // 立即设置字幕显示
+                setSubtitles(result.subtitles);
+
+                // 在后台异步处理统计信息更新和字幕上传
+                (async () => {
+                    try {
+
+                        // 更新用户统计信息
+                        await updateUserStatsToAPI(true, newCost, 0, 0, newDuration);
+                        
+                        // 保存字幕到数据库
+                        const headers = {
+                            Authorization: `Bearer ${token}`
+                        };
+                        await api.createSubtitle({
+                            md5: videoMd5,
+                            video_duration: newDuration,
+                            user_id: currentUserId,
+                            subtitle: result.subtitles,
+                            play_users_count: 1
+                        }, headers);
+                        
+                        console.log('字幕已保存到数据库');
+                    } catch (error) {
+                        console.error('保存字幕信息失败:', error);
+                        // 这里可以添加一些错误提示，但不影响用户继续使用已生成的字幕
+                    }
+                })();
+            }
+        }
     } catch (error) {
         if (!shouldCancelGeneration) {
             console.error('生成字幕失败:', error);
             alert('生成字幕失败: ' + error.message);
         }
     } finally {
-      setIsGeneratingSubtitles(false);
+        setIsGeneratingSubtitles(false);
     }
   };
 
