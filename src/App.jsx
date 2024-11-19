@@ -857,7 +857,7 @@ function App() {
       const createUserResult = await api.createUser(payload);
 
       if (createUserResult.data.success) {
-        // 注册成功后不关闭窗口，而是提示用户登录
+        // 注册成功后不关闭窗��，而是提示用户登��
         alert("注册成功，请登录");
         
         // 清空注册表单
@@ -1038,8 +1038,13 @@ function App() {
             <div className="menu-item" onClick={handleNotebookClick}>
               <i className="fas fa-book"></i> Notebook
             </div>
-            <div className="menu-item" onClick={() => setShowRegister(true)}>
-              <i className="fas fa-user"></i> 注册/登录
+            <div className="menu-item" onClick={() => currentUserId ? null : setShowRegister(true)}>
+              <i className="fas fa-user"></i>
+              {currentUserId ? (
+                <>已登录: {loginForm.username}</>
+              ) : (
+                <>注册/登录</>
+              )}
             </div>
           </div>
         )}
