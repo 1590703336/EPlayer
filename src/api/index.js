@@ -2,8 +2,8 @@ import axios from "axios";
 import md5 from "md5";
 let api={}
 
-const BASE_URL = "http://localhost:3000/"; // 本地
-//const BASE_URL = "https://eplayer-server.vercel.app/"; // 线上
+//const BASE_URL = "http://localhost:3000/"; // 本地
+const BASE_URL = "https://eplayer-server.vercel.app/"; // 线上
 api = axios.create({
 
     withCredentials: false, 
@@ -62,17 +62,58 @@ export const deleteSubtitle = (id, headers) => api.delete(`/subtitle/${id}`, { h
 export const updateSubtitle = (payload, headers) => api.put(`/subtitle/updateSubtitle?md5=${payload.md5}`,payload, { headers })  // success
 
 const apis={
-    getNotebook,
-    getUser,
-    updateUser,
-    //updateUserInfo,
-    createUser,
-    loginUser,
-    updateUserVersion,
-    deleteUser,
-    getSubtitle,
-    createSubtitle,
-    deleteSubtitle,
-    updateSubtitle
+    getNotebook: async (headers) => {
+        return await retryOperation(async () => {
+            return await api.get(`/user/notebook`, { headers });
+        });
+    },
+    
+    getUser: async (headers) => {
+        return await retryOperation(async () => {
+            return await api.get(`/user/user`, { headers });
+        });
+    },
+    
+    updateUser: async (payload, headers) => {
+        return await retryOperation(async () => {
+            return await api.put(`/user/updateUser`, payload, { headers });
+        });
+    },
+    
+    createUser: async (payload) => {
+        return await retryOperation(async () => {
+            return await api.post(`/user`, payload);
+        });
+    },
+    
+    loginUser: async (credentials) => {
+        return await retryOperation(async () => {
+            return await api.get(`/user/login?username=${credentials.username}&password=${credentials.password}`);
+        });
+    },
+    
+    updateUserVersion: async (payload, headers) => {
+        return await retryOperation(async () => {
+            return await api.put(`/user/updateVersion`, payload, { headers });
+        });
+    },
+    
+    getSubtitle: async (payload, headers) => {
+        return await retryOperation(async () => {
+            return await api.get(`/subtitle/getSubtitle?md5=${payload.md5}`, { headers });
+        });
+    },
+    
+    createSubtitle: async (payload, headers) => {
+        return await retryOperation(async () => {
+            return await api.post(`/subtitle`, payload, { headers });
+        });
+    },
+    
+    updateSubtitle: async (payload, headers) => {
+        return await retryOperation(async () => {
+            return await api.put(`/subtitle/updateSubtitle?md5=${payload.md5}`, payload, { headers });
+        });
+    }
 }
 export default apis

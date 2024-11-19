@@ -6,7 +6,7 @@ use openai_api_rust::*;
 use reqwest::Client;
 use serde::Deserialize;
 use serde::Serialize;
-use std::io::Read;
+use std::io::{Read, Seek};
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
@@ -95,7 +95,7 @@ enum AssistantRole {
 impl AssistantRole {
     fn get_system_prompt(&self) -> String {
         match self {
-            AssistantRole::Word_Dictionary => "Provides parts of speech, Chinese translation and clear definition suitable for English learners less than 20 words. Output format: [part of speech],[Chinese translation],[definition]".to_string(),
+            AssistantRole::Word_Dictionary => "Provides parts of speech, two common Chinese translation and clear definition suitable for English learners less than 20 words. Output format: [part of speech],[Chinese translation],[definition]".to_string(),
             AssistantRole::Word_Symbols => "Provide English and American pronunciation symbols. Output format: [English symbol],[American symbol]".to_string(),
             AssistantRole::Word_More => "Provide one synonyms and additional notes about usage,including whether the word is formal, or used in specific contexts, less than 20 words. Output format: [synonym],[notes]".to_string(),
             AssistantRole::Word_Etymology => "Provide etymology or origin, less than 20 words. Output format: [etymology or origin]".to_string(),
@@ -721,20 +721,47 @@ fn calculate_md5(video_path: String) -> Result<String, String> {
     let mut file = std::fs::File::open(&video_path)
         .map_err(|e| format!("打开文件失败: {}", e))?;
     
+    // 获取文件大小
+    let file_size = file.metadata()
+        .map_err(|e| format!("获取文件信息失败: {}", e))?
+        .len();
+    
+    // 设置读取大小为1MB
+    const READ_SIZE: u64 = 1024 * 1024; // 1MB in bytes
+    
     // 创建MD5 hasher
     let mut hasher = Md5::new();
     
-    // 创建缓冲区来分块读取文件
-    let mut buffer = [0; 8192]; // 使用更小的缓冲区(8KB)
-    
-    // 循环读取文件内容并更新hasher
-    loop {
+    if file_size <= READ_SIZE {
+        // 如果文件小于1MB,直接读取整个文件
+        let mut buffer = vec![0; file_size as usize];
         match file.read(&mut buffer) {
-            Ok(0) => break, // 文件读取完毕
             Ok(n) => {
                 hasher.update(&buffer[..n]);
             }
             Err(e) => return Err(format!("读取文件失败: {}", e)),
+        }
+    } else {
+        // 读取前1MB
+        let mut start_buffer = vec![0; READ_SIZE as usize];
+        match file.read(&mut start_buffer) {
+            Ok(n) => {
+                hasher.update(&start_buffer[..n]);
+            }
+            Err(e) => return Err(format!("读取文件开头失败: {}", e)),
+        }
+        
+        // 移动到最后1MB
+        file.seek(std::io::SeekFrom::End(-(READ_SIZE as i64)))
+            .map_err(|e| format!("定位到文件末尾失败: {}", e))?;
+            
+        // 读取最后1MB
+        let mut end_buffer = vec![0; READ_SIZE as usize];
+        match file.read(&mut end_buffer) {
+            Ok(n) => {
+                hasher.update(&end_buffer[..n]);
+            }
+            Err(e) => return Err(format!("读取文件末尾失败: {}", e)),
         }
     }
     

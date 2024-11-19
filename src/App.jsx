@@ -64,7 +64,6 @@ function App() {
     native_language: 'en' // 默认英
   });
   const [isRegistering, setIsRegistering] = useState(false);
-  const [isRegisterInputFocused, setIsRegisterInputFocused] = useState(false);
   const [loginForm, setLoginForm] = useState({
     username: '',
     password: ''
@@ -151,7 +150,13 @@ function App() {
   useEffect(() => {
     const handleKeyDown = (event) => {
       // 添加 isGeneratingSubtitles 到判断条件中
-      if (showRegister || isSearchInputFocused || isRegisterInputFocused || isGeneratingSubtitles) {
+      // console.log("eventkey:", event.key);
+      // console.log("showRegister:", showRegister);
+      // console.log("isSearchInputFocused:", isSearchInputFocused);
+      // console.log("isRegisterInputFocused:", isRegisterInputFocused);
+      // console.log("isGeneratingSubtitles:", isGeneratingSubtitles);
+      
+      if (showRegister || isSearchInputFocused || isGeneratingSubtitles) {
         return;
       }
 
@@ -166,9 +171,11 @@ function App() {
         }
         setCurrentSubtitleIndex(newIndex);
       } else if (event.key === 'ArrowRight') {
+        //console.log("ArrowRight");
         //const newIndex = Math.min(currentSubtitleIndex + 1, subtitles.length - 1);
         const newIndex = Math.min(currentSubtitleIndex + 1, subtitles.length);
         const startTime = subtitles[newIndex - 1]?.startSeconds;
+        
         if (playerRef.current) {
           playerRef.current.seekTo(startTime, 'seconds');
         }        
@@ -193,7 +200,7 @@ function App() {
     currentSubtitleIndex, 
     isSearchInputFocused, 
     showRegister, 
-    isRegisterInputFocused,
+    //isRegisterInputFocused,
     isGeneratingSubtitles  // 添加到依赖数组
   ]);
 
@@ -968,30 +975,46 @@ function App() {
 
   // 修改处理笔记本点击的函数
   const handleNotebookClick = () => {
+    // 检查是否登录
+    if (!currentUserId || !token) {
+        alert('请先登录后再查看笔记本');
+        setShowRegister(true); // 显示登录窗口
+        return;
+    }
+
     setShowNotebook(true);
     setShowAboutMenu(false);
   };
 
   // 添加刷新笔记的函数
   const refreshNotebook = async () => {
+    // 检查是否登录
+    if (!currentUserId || !token) {
+        alert('请先登录后再查看笔记本');
+        setShowNotebook(false); // 关闭笔记本窗口
+        setShowRegister(true); // 显示登录窗口
+        return;
+    }
+
     setIsLoadingNotebook(true);
     try {
-      const headers = {
-        Authorization: `Bearer ${token}`
-      };
-      const getNotebookResult = await api.getNotebook(headers);
-      if (getNotebookResult.data.success) {
-        const userNotebook = getNotebookResult.data.data || [];
-        // 按时间倒序排序
-        setNotebook(userNotebook.sort((a, b) => 
-          new Date(b.timestamp) - new Date(a.timestamp)
-        ));
-        console.log("笔记刷新成功");
-      }
+        const headers = {
+            Authorization: `Bearer ${token}`
+        };
+        const getNotebookResult = await api.getNotebook(headers);
+        if (getNotebookResult.data.success) {
+            const userNotebook = getNotebookResult.data.data || [];
+            // 按时间倒序排序
+            setNotebook(userNotebook.sort((a, b) => 
+                new Date(b.timestamp) - new Date(a.timestamp)
+            ));
+            console.log("笔记刷新成功");
+        }
     } catch (error) {
-      console.error('刷新笔记失败:', error);
+        console.error('刷新笔记失败:', error);
+        alert('刷新笔记失败: ' + error.toString());
     } finally {
-      setIsLoadingNotebook(false);
+        setIsLoadingNotebook(false);
     }
   };
 
@@ -1415,8 +1438,6 @@ function App() {
                     ...registerForm,
                     username: e.target.value
                   })}
-                  onFocus={() => setIsRegisterInputFocused(true)}
-                  onBlur={() => setIsRegisterInputFocused(false)}
                   required
                 />
               </div>
@@ -1430,8 +1451,6 @@ function App() {
                     ...registerForm,
                     email: e.target.value
                   })}
-                  onFocus={() => setIsRegisterInputFocused(true)}
-                  onBlur={() => setIsRegisterInputFocused(false)}
                   required
                 />
               </div>
@@ -1445,8 +1464,6 @@ function App() {
                     ...registerForm,
                     password: e.target.value
                   })}
-                  onFocus={() => setIsRegisterInputFocused(true)}
-                  onBlur={() => setIsRegisterInputFocused(false)}
                   required
                 />
               </div>
@@ -1459,8 +1476,6 @@ function App() {
                     ...registerForm,
                     native_language: e.target.value
                   })}
-                  onFocus={() => setIsRegisterInputFocused(true)}
-                  onBlur={() => setIsRegisterInputFocused(false)}
                 >
                   <option value="en">English</option>
                   <option value="zh">中文</option>
@@ -1498,8 +1513,6 @@ function App() {
                       ...loginForm,
                       username: e.target.value
                     })}
-                    onFocus={() => setIsRegisterInputFocused(true)}
-                    onBlur={() => setIsRegisterInputFocused(false)}
                     required
                   />
                 </div>
@@ -1513,8 +1526,6 @@ function App() {
                       ...loginForm,
                       password: e.target.value
                     })}
-                    onFocus={() => setIsRegisterInputFocused(true)}
-                    onBlur={() => setIsRegisterInputFocused(false)}
                     required
                   />
                 </div>
