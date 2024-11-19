@@ -26,7 +26,7 @@
   margin: 0;
   padding-top: 0%; /* 设置顶部内边距为视口高度的 0% */
   display: flex; /* 使用 flex 布局 */
-  flex-direction: row; /* 设���子元素按行排列 */
+  flex-direction: row; /* 设按行排列 */
   justify-content: center; /* 水平居中子元素 */
   text-align: center; /* 文本居中对齐 */
 }
@@ -71,7 +71,7 @@
 
 a {
   font-weight: 500; /* 设置字体粗细 */
-  color: #646cff; /* 设置链接的颜色 */
+  color: #646cff; /* 置链的颜色 */
   text-decoration: inherit; /* 继承文本装饰效果 */
 }
 
@@ -121,12 +121,12 @@ button {
 
 @media (prefers-color-scheme: dark) {
   :root {
-    color: #f6f6f6d1; /* 设置深���模式下的文字颜色 */
+    color: #f6f6f6d1; /* 设置深模下的文字颜色 */
     background-color: #000000; /* 设置深色模式下的背景颜色 */
   }
 
   a:hover {
-    color: #24c8db; /* 深色模式下链接悬停时的颜色 */
+    color: #24c8db; /* 深色模式接悬停时的颜色 */
   }
 
   input,
@@ -210,12 +210,12 @@ input[type="file"] {
   width: 100%; /* 文件输入框占据父元素的全部宽度 */
 }
 
-.player-wrapper {
+.player-wrapper { /* 播放器容器 */
   position: relative;
   width: 100%;
-  height: 100%; /* 占据 main-content 的全部高度 */
+  height: 85%;
   min-height: 80vh; /* 最小高度为视口高度的 80% */
-  background-color: #000; /* 添加黑色背景 */
+  background-color: #000;
 }
 
 .player-wrapper .react-player {
@@ -231,9 +231,9 @@ input[type="file"] {
 }
 
 .ReactModal__Content {
-  background-color: white; /* 白色背景 */
+  background-color: white; /* 色背景 */
   color: black; /* 黑色文本 */
-  padding: 20px; /* 内边距 */
+  padding: 20px; /* 边距 */
   border-radius: 8px; /* 圆角 */
   max-width: 500px; /* 最大宽度 */
   margin: auto; /* 居中 */
@@ -289,16 +289,6 @@ input[type="file"] {
 
 .menu-item:hover {
   background-color: #f0f0f0;
-}
-
-.menu-item:first-child {
-  border-bottom: 1px solid #e0e0e0;
-  cursor: default;
-  color: #666;
-}
-
-.menu-item:first-child:hover {
-  background-color: #ffffff;
 }
 
 .guide-overlay {
@@ -364,4 +354,883 @@ input[type="file"] {
 .close-button:hover {
   background-color: rgba(255, 255, 255, 0.3);  /* 悬停时稍微增加透明度 */
   transform: scale(1.1);  /* 添加悬停时的放大效果 */
+}
+
+.context-menu {
+  background: rgba(0, 0, 0, 0.8);
+  border-radius: 8px;
+  padding: 8px;  /* 调整内边距 */
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  display: flex;  /* 使用 flex 布局 */
+  flex-direction: row;  /* 横向排列 */
+  gap: 8px;  /* 项目之间的间距 */
+}
+
+.context-menu .menu-item {
+  padding: 8px 12px;  /* 调整内边距 */
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;  /* 图标和文字之间的间距 */
+  transition: background-color 0.2s;
+  border-radius: 4px;  /* 给每个选项添加圆角 */
+  white-space: nowrap;  /* 防止文字换行 */
+}
+
+.context-menu .menu-item:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.context-menu .menu-item i {
+  width: 16px;  /* 调整图标宽度 */
+  text-align: center;
+}
+
+.ai-response {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 15px 20px;
+  border-radius: 8px;
+  max-width: 80%;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+}
+
+.custom-input-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1100;
+}
+
+.custom-input-container {
+  background: rgba(0, 0, 0, 0.8);
+  padding: 20px;
+  border-radius: 8px;
+  min-width: 300px;
+}
+
+.custom-input-container input {
+  width: 100%;
+  padding: 8px 12px;
+  margin-bottom: 15px;
+  background: rgba(255, 255, 255, 0.9);
+  border: none;
+  border-radius: 4px;
+  color: #000;
+}
+
+.custom-input-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.custom-input-buttons button {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  transition: background-color 0.2s;
+}
+
+.custom-input-buttons button:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* 修改为 */
+.about-menu .menu-item:first-child {
+  border-bottom: 1px solid #e0e0e0;
+  cursor: default;
+  color: #666;
+}
+
+.about-menu .menu-item:first-child:hover {
+  background-color: #ffffff;
+}
+
+.extracting-status {
+  margin-left: 10px;
+  color: #666;
+  font-style: italic;
+}
+
+.file-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.audio-player {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.5);
+  padding: 5px;
+  border-radius: 4px;
+  z-index: 1000;
+}
+
+.audio-player audio {
+  height: 30px;
+}
+
+/* 添加 AI 字幕按钮样式 */
+.ai-subtitle-button {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;  /* 使用 flex 布 */
+  flex-direction: row;  /* 明确指定为横向排列 */
+  align-items: center;  /* 垂直居中对齐 */
+  justify-content: center;  /* 水平居中对齐 */
+  gap: 8px;  /* 图标和文字之间的间距 */
+  z-index: 1000;
+  transition: all 0.3s ease;
+  white-space: nowrap;  /* 止文字换行 */
+}
+
+.ai-subtitle-button i {
+  font-size: 16px;
+  margin-right: 4px;  /* 给图标右侧添加一点间距 */
+}
+
+.ai-subtitle-button .loading-spinner {
+  margin-right: 4px;  /* 加载动画也添加右侧间距 */
+}
+
+/* 添加加载动画 */
+.loading-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: white;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.subtitle-search-form {
+  display: flex;
+  align-items: center;
+  margin-left: 10px;
+}
+
+.subtitle-search-input {
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: none;
+  margin-right: 8px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #000;
+  width: 200px;
+}
+
+.subtitle-search-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.3);
+}
+
+.subtitle-buttons {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.8);
+  padding: 10px;
+  border-radius: 4px;
+}
+
+.subtitle-search-results {
+  position: fixed;
+  bottom: 70px;  /* 调整位置，避免遮挡搜索框 */
+  right: 20px;
+  background: rgba(0, 0, 0, 0.8);
+  padding: 15px;
+  border-radius: 8px;
+  width: 800px;  /* 设置固定宽度为 800px */
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 1000;
+}
+
+.results-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.result-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.result-item span {
+  flex: 1;  /* 让文本占据剩余空间 */
+  margin-right: 20px;  /* 与下载按钮保持一定距离 */
+  white-space: normal;  /* 允许文本换行 */
+  word-break: break-word;  /* 长单词可以换行 */
+}
+
+.result-item button {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: background-color 0.2s;
+}
+
+.result-item button:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.subtitle-search-results ul {
+  list-style-type: none;
+  padding: 0;
+  margin: 10px 0;
+  text-align: left;
+}
+
+.subtitle-search-results li {
+  margin: 5px 0;
+  color: #999;
+  font-size: 14px;
+}
+
+.subtitle-search-results p {
+  margin: 5px 0;
+  color: #fff;
+}
+
+/* 搜索字幕容器样式 */
+.subtitle-search-container {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  padding: 10px;
+  border-radius: 4px;
+  z-index: 1000;
+  width: auto;
+  display: flex;
+  justify-content: center;
+}
+
+/* 搜索结果头部样式 */
+.search-results-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+/* 关闭按钮样式 */
+.close-search-results {
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  padding: 5px;
+  font-size: 16px;
+  transition: opacity 0.2s;
+}
+
+.close-search-results:hover {
+  opacity: 0.8;
+}
+
+/* 修改字幕控制按钮容器样式 */
+.subtitle-controls {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 1000;
+}
+
+/* 修改 AI 字幕按钮样式 */
+.ai-subtitle-button {
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+  width: fit-content;
+}
+
+/* 修改搜索字幕容器样式 */
+.subtitle-search-container {
+  background: rgba(0, 0, 0, 0.8);
+  padding: 10px;
+  border-radius: 4px;
+  width: fit-content;
+}
+
+/* 修改搜索结显示位置 */
+.subtitle-search-results {
+  position: fixed;
+  bottom: 100px;
+  right: 20px;
+  background: rgba(0, 0, 0, 0.8);
+  padding: 15px;
+  border-radius: 8px;
+  max-width: 400px;
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 1000;
+}
+
+/* 恢复 AI 字幕按钮的原始样式 */
+.ai-subtitle-button {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 1000;
+  transition: all 0.3s ease;
+}
+
+.ai-subtitle-button:hover {
+  background: rgba(0, 0, 0, 0.9);
+  transform: translateX(-50%) scale(1.05);
+}
+
+/* 修改搜索字幕容器样式，使其更小 */
+.subtitle-search-container {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: rgba(0, 0, 0, 0.8);
+  padding: 8px;
+  border-radius: 4px;
+  z-index: 1000;
+}
+
+.subtitle-search-container form {
+  display: flex;
+  gap: 8px;
+  margin: 0;
+}
+
+.subtitle-search-input {
+  width: 150px;  /* 减小输入框宽度 */
+  padding: 6px 10px;  /* 减小内边距 */
+  font-size: 14px;  /* 减小字体大小 */
+}
+
+.search-subtitle-button {
+  padding: 6px 12px;  /* 减小按钮内边距 */
+  font-size: 14px;  /* 减小字体小 */
+}
+
+/* 修改搜索结果显示位置，跟随搜索框 */
+.subtitle-search-results {
+  position: fixed;
+  bottom: 70px;  /* 调整位置，避免遮挡搜索框 */
+  right: 20px;
+  background: rgba(0, 0, 0, 0.8);
+  padding: 15px;
+  border-radius: 8px;
+  max-width: 400px;
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 1000;
+}
+
+/* 语言选择下拉框容器 */
+.language-select {
+  margin-right: 10px;
+}
+
+/* 语言选择下拉框样式 */
+.language-dropdown {
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: none;
+  background: rgba(255, 255, 255, 0.9);
+  color: #000;
+  font-size: 14px;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.3s ease;
+}
+
+.language-dropdown:hover {
+  background: rgba(255, 255, 255, 1);
+}
+
+/* 修改字幕按钮容器样式以适应新的布局 */
+.subtitle-buttons {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.8);
+  padding: 10px;
+  border-radius: 4px;
+}
+
+/* 修改字幕按钮容器样式 */
+.subtitle-buttons {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;  /* 使用 flex 布局 */
+  flex-direction: row;  /* 横向排列 */
+  align-items: center;  /* 垂直居中对齐 */
+  gap: 10px;  /* 元素之间的间距 */
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.8);
+  padding: 10px;
+  border-radius: 4px;
+  white-space: nowrap;  /* 防止文字换行 */
+}
+
+/* 语言选择下拉框容器 */
+.language-select {
+  display: inline-block;  /* 内联块级元素 */
+  margin-right: 10px;  /* 右侧间距 */
+}
+
+/* 语言选择下拉框样式 */
+.language-dropdown {
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: none;
+  background: rgba(255, 255, 255, 0.9);
+  color: #000;
+  font-size: 14px;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.3s ease;
+  height: 36px;  /* 设置固定高度，与按钮对齐 */
+}
+
+/* AI 字幕按钮样式 */
+.ai-subtitle-button {
+  position: static;  /* 移除绝对定位 */
+  transform: none;   /* 移除变换 */
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+  height: 36px;  /* 设置固定高度，与下拉框对齐 */
+}
+
+.ai-subtitle-button:hover {
+  background: rgba(0, 0, 0, 0.9);
+  transform: scale(1.05);  /* 只保留缩放效果 */
+}
+
+/* 添加注册弹窗样式 */
+.register-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+}
+
+.register-content {
+  background-color: #1a1a1a;
+  padding: 25px;  /* 减小内边距 */
+  width: 90%;
+  max-width: 500px;
+  height: 80vh;  /* 设置高度为视口高度的80% */
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+  display: flex;  /* 使用 flex 布局 */
+  flex-direction: column;  /* 垂直排列 */
+}
+
+.register-content h2 {
+  color: #fff;
+  margin-bottom: 20px;  /* 减小标题下方间距 */
+  text-align: center;
+  font-size: 20px;  /* 减小标题字号 */
+}
+
+.register-content form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;  /* 占据剩余空间 */
+  gap: 20px;  /* 表单项之间的间距 */
+}
+
+.form-group {
+  display: grid;  /* 使用网格布局 */
+  grid-template-columns: 120px 1fr;  /* 左��固定宽度，右侧自适应 */
+  align-items: center;
+  width: 100%;
+  margin-bottom: 10px;  /* 减小表单项之间的间距 */
+}
+
+.form-group label {
+  color: #fff;
+  font-size: 13px;  /* 减小标签字号 */
+  text-align: left;  /* 标签左对齐 */
+  padding-left: 20px;  /* 添加左侧内边距 */
+}
+
+/* 移除标签后的等号 */
+.form-group label::after {
+  content: none;
+}
+
+.form-group input,
+.form-group select {
+  padding: 3px 8px;  /* 减小输入框内边距 */
+  height: 25px;  /* 减小输入框高度 */
+  border: 1px solid #333;
+  border-radius: 0;
+  background-color: #2a2a2a;
+  color: #fff;
+  font-size: 13px;  /* 减小输入框字号 */
+  width: 100%;  /* 输入框占满右侧空间 */
+}
+
+.register-content button {
+  width: 90px;  /* 减小按钮宽度 */
+  padding: 4px 10px;  /* 减小按钮内边距 */
+  height: 25px;  /* 减小按钮高度 */
+  font-size: 13px;  /* 减小按钮字号 */
+  background-color: #4a9eff;
+  color: #fff;
+  border: none;
+  border-radius: 0;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  align-self: flex-end;  /* 按钮靠右对齐 */
+  margin-top: 15px;  /* 减小按钮上方间距 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.register-content button:hover {
+  background-color: #357abd;
+}
+
+.register-content button:disabled {
+  background-color: #666;
+  cursor: not-allowed;
+}
+
+.register-content button .loading-spinner {
+  width: 12px;  /* 减小加载动画大小 */
+  height: 12px;
+  border-width: 1px;
+}
+
+/* 修改注册内容区域样式 */
+.register-content {
+  background-color: #1a1a1a;
+  padding: 25px;  /* 减小内边距 */
+  width: 90%;
+  max-width: 500px;
+  height: 80vh;
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+}
+
+/* 添加分隔线样式 */
+.divider {
+  width: 100%;
+  height: 1px;
+  background-color: #333;
+  margin: 20px 0;  /* 减小分隔线上下间距 */
+}
+
+/* 登录区域样式 */
+.login-section {
+  margin-top: 15px;  /* 减小登录区域上方间距 */
+}
+
+.login-section h2 {
+  color: #fff;
+  margin-bottom: 15px;  /* 减小标题下方间距 */
+  text-align: center;
+  font-size: 20px;  /* 减小标题字号 */
+}
+
+/* 修改按钮样式 */
+.register-content button,
+.login-section button {
+  width: 90px;  /* 减小按钮宽度 */
+  padding: 4px 10px;  /* 减小按钮内边距 */
+  height: 25px;  /* 减小按钮高度 */
+  font-size: 13px;  /* 减小按钮字号 */
+  background-color: #4a9eff;
+  color: #fff;
+  border: none;
+  border-radius: 0;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  align-self: flex-end;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 15px;  /* 减小按钮上方间距 */
+}
+
+/* 加载动画样式调整 */
+.register-content button .loading-spinner,
+.login-section button .loading-spinner {
+  width: 12px;  /* 减小加载动画大小 */
+  height: 12px;
+  border-width: 1px;
+}
+
+.notebook-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.notebook-content {
+  background-color: #1a1a1a;
+  border-radius: 8px;
+  width: 80%;
+  max-width: 800px;
+  max-height: 80vh;
+  padding: 20px;
+  position: relative;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+}
+
+.notebook-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #333;
+  flex-shrink: 0;
+}
+
+.notebook-body {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 10px;
+  margin-top: 20px;
+}
+
+/* 自定义滚动条样式 */
+.notebook-body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.notebook-body::-webkit-scrollbar-track {
+  background: #1a1a1a;
+  border-radius: 4px;
+}
+
+.notebook-body::-webkit-scrollbar-thumb {
+  background: #4a9eff;
+  border-radius: 4px;
+}
+
+.notebook-body::-webkit-scrollbar-thumb:hover {
+  background: #357abd;
+}
+
+.note-item {
+  border: 1px solid #333;
+  border-radius: 4px;
+  margin-bottom: 15px;
+  padding: 15px;
+  background-color: #2a2a2a;
+}
+
+.note-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  color: #999;
+  font-size: 0.9em;
+}
+
+.note-word {
+  font-weight: bold;
+  color: #fff;
+}
+
+.note-type {
+  color: #4a9eff;
+}
+
+.note-time {
+  color: #666;
+}
+
+.note-prompt {
+  font-style: italic;
+  color: #999;
+  margin-bottom: 10px;
+  padding-left: 10px;
+  border-left: 3px solid #4a9eff;
+}
+
+.note-response {
+  white-space: pre-wrap;
+  line-height: 1.5;
+  color: #ccc;
+}
+
+/* 添加笔记本控制按钮容器样式 */
+.notebook-controls {
+  display: flex;
+  gap: 10px;
+}
+
+/* 添加刷新按钮样式 */
+.refresh-button {
+  background: none;
+  border: none;
+  color: #4a9eff;
+  cursor: pointer;
+  padding: 5px;
+  font-size: 16px;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.refresh-button:hover {
+  transform: rotate(180deg);
+  color: #357abd;
+}
+
+/* 修改关闭按钮样式以匹配刷新按钮 */
+.notebook-header .close-button {
+  background: none;
+  border: none;
+  color: #ff4a4a;
+  cursor: pointer;
+  padding: 5px;
+  font-size: 16px;
+  transition: color 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.notebook-header .close-button:hover {
+  color: #bd3535;
+}
+
+/* 添加注册弹窗头部样式 */
+.register-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #333;
+}
+
+.register-header h2 {
+  margin: 0;  /* 移除标题的默认外边距 */
+}
+
+/* 修改关闭按钮样式 */
+.register-header .close-button {
+  background: none;
+  border: none;
+  color: #ff4a4a;
+  cursor: pointer;
+  padding: 5px;
+  font-size: 16px;
+  transition: color 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: auto;  /* 覆盖之前的固定宽度 */
+  height: auto;  /* 覆盖之前的固定高度 */
+  margin: 0;  /* 移除之前的外边距 */
+}
+
+.register-header .close-button:hover {
+  color: #bd3535;
 }
