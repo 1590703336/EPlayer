@@ -166,7 +166,8 @@ function App() {
         }
         setCurrentSubtitleIndex(newIndex);
       } else if (event.key === 'ArrowRight') {
-        const newIndex = Math.min(currentSubtitleIndex + 1, subtitles.length - 1);
+        //const newIndex = Math.min(currentSubtitleIndex + 1, subtitles.length - 1);
+        const newIndex = Math.min(currentSubtitleIndex + 1, subtitles.length);
         const startTime = subtitles[newIndex - 1]?.startSeconds;
         if (playerRef.current) {
           playerRef.current.seekTo(startTime, 'seconds');
