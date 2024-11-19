@@ -77,6 +77,7 @@ function App() {
   const [isLoadingNotebook, setIsLoadingNotebook] = useState(false);
   const [isMd5Calculated, setIsMd5Calculated] = useState(false);
   const [token, setToken] = useState(null);
+  const [uploadedFilePath, setUploadedFilePath] = useState(null);
 
   // 获取应用版本号
   useEffect(() => {
@@ -272,32 +273,35 @@ function App() {
       console.log("path:", path);
       
       if (path) {
-        const fileUrl = convertFileSrc(path);        
+        // 先重置状态
+        setIsMd5Calculated(false);
+        setVideoMd5("");
+        
+        const fileUrl = convertFileSrc(path);
+        setUploadedFile(fileUrl);
         setVideoUrl(fileUrl);
         setIsLocalVideo(true);
         setIsNetworkVideo(false);
         setIsPlaying(true);
 
-        // // 计算MD5
-        // const base64 = await fileToBase64(file);
-        // const md5 = await invoke("calculate_md5", { videoBase64: base64 });
-        
-        // // 使用Promise.all确保两个状态都更新完成
-        // await Promise.all([
-        //     new Promise(resolve => {
-        //         setVideoMd5(md5);
-        //         resolve();
-        //     }),
-        //     new Promise(resolve => {
-        //         setIsMd5Calculated(true);
-        //         resolve();
-        //     })
-        // ]);
-        
-        // console.log("视频MD5计算完成:", md5, "状态已更新");
+        try {
+          // 计算MD5
+          const md5 = await invoke("calculate_md5", { videoPath: path });
+          console.log("MD5计算完成:", md5);
+          setVideoMd5(md5);
+          setIsMd5Calculated(true);
+          setUploadedFilePath(path);
+        } catch (error) {
+          console.error("计算MD5失败:", error);
+          // 即使MD5计算失败，也不影响视频播放
+          setIsMd5Calculated(false);
+          setVideoMd5("");
+        }
       }
     } catch (error) {
       console.error("处理文件失败:", error);
+      setIsMd5Calculated(false);
+      setVideoMd5("");
     }
   };
 
@@ -324,6 +328,7 @@ function App() {
     setIsGeneratingSubtitles(false); // 重置生成状态
     setUploadedFile(null); // 清除上传的文件
     setIsMd5Calculated(false); // 重置MD5计算状态
+    setUploadedFilePath(null); // 重置上传的文件路径
   };
 
   // 修改处理"关于"点的函数
@@ -686,7 +691,8 @@ function App() {
         }
 
         const audioData = await invoke('extract_audio', { 
-          videoPath: await fileToBase64(uploadedFile) 
+          //videoPath: await fileToBase64(uploadedFile) 
+          videoPath: uploadedFilePath
         });
         console.log('音频提取完成');
         

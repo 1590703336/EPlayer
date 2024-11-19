@@ -368,40 +368,19 @@ async fn extract_audio(video_path: String) -> Result<String, String> {
     // 使用系统临时目录
     let temp_dir = std::env::temp_dir();
     let uuid = Uuid::new_v4();
-
-    // 创建临时文件路径
-    let temp_input = temp_dir.join(format!("input_{}.mp4", uuid));
     let temp_output = temp_dir.join(format!("output_{}.mp3", uuid));
-
-    // 将路径换为字符串
-    let temp_input_str = temp_input.to_string_lossy().to_string();
     let temp_output_str = temp_output.to_string_lossy().to_string();
 
-    println!("输入文件路径: {}", temp_input_str);
-    println!("输出文件路径: {}", temp_output_str);
+    println!("输入视频路径: {}", video_path);
+    println!("输出音频路径: {}", temp_output_str);
 
-    if video_path.starts_with("data:") {
-        let base64_data = video_path
-            .split("base64,")
-            .nth(1)
-            .ok_or("无效的data URL格式")?;
-
-        let video_data =
-            base64::decode(base64_data).map_err(|e| format!("base64解码失败: {}", e))?;
-
-        // 使用 PathBuf 的路径写入文件
-        std::fs::write(&temp_input, video_data).map_err(|e| format!("写入临时文件失败: {}", e))?;
-    } else {
-        return Err("不支持的视频格式".to_string());
-    }
-
-    // 执行 ffmpeg 命令，不需要手动添加引号
+    // 直接使用视频文件路径执行 ffmpeg 命令
     let output = Command::new(&ffmpeg_path)
         .args(&[
             "-hwaccel",
             "auto", // 自动选择可用的硬件加速
             "-i",
-            &temp_input_str,
+            &video_path, // 直接使用视频文件路径
             "-vn",
             "-acodec",
             "mp3",
@@ -421,14 +400,13 @@ async fn extract_audio(video_path: String) -> Result<String, String> {
     }
 
     // 读取输出文件
-    let mut file =
-        std::fs::File::open(&temp_output).map_err(|e| format!("无法读取输出文件: {}", e))?;
+    let mut file = std::fs::File::open(&temp_output)
+        .map_err(|e| format!("无法读取输出文件: {}", e))?;
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer)
-        .map_err(|e| format!("读取文件败: {}", e))?;
+        .map_err(|e| format!("读取文件失败: {}", e))?;
 
     // 清理临时文件
-    let _ = std::fs::remove_file(&temp_input);
     let _ = std::fs::remove_file(&temp_output);
 
     // 转换为base64
@@ -509,10 +487,7 @@ struct TranscriptionResult {
 }
 
 #[tauri::command]
-async fn transcribe_audio(
-    audio_base64: String,
-    language: String,
-) -> Result<TranscriptionResult, String> {
+async fn transcribe_audio(audio_base64: String, language: String) -> Result<TranscriptionResult, String> {
     let auth = Auth::from_env().map_err(|e| format!("API密钥错误: {:?}", e))?;
     let client = reqwest::Client::new();
 
@@ -522,7 +497,7 @@ async fn transcribe_audio(
         .nth(1)
         .ok_or("无效的音频数据格式")?;
 
-    let audio_bytes = base64::decode(audio_data).map_err(|e| format!("解码音频据失败: {}", e))?;
+    let audio_bytes = base64::decode(audio_data).map_err(|e| format!("解码音频数据失败: {}", e))?;
 
     // 创建multipart form
     let prompt = match language.as_str() {
@@ -538,7 +513,7 @@ async fn transcribe_audio(
             reqwest::multipart::Part::bytes(audio_bytes)
                 .file_name("audio.mp3")
                 .mime_str("audio/mp3")
-                .map_err(|e| format!("创建表单失: {}", e))?,
+                .map_err(|e| format!("创建表单失败: {}", e))?,
         )
         .text("model", "whisper-1")
         .text("language", language)
@@ -660,7 +635,7 @@ async fn search_subtitles(file_name: String) -> Result<Vec<SubtitleSearchResult>
                     file_id: file
                         .get("file_id")? // 从 files 数组中获取 file_id
                         .to_string()
-                        .replace("\"", ""), // 移除可��的引号
+                        .replace("\"", ""), // 移除可的引号
                 })
             } else {
                 None
@@ -750,20 +725,31 @@ async fn download_subtitle(file_id: String) -> Result<String, String> {
 }
 
 #[tauri::command]
-async fn calculate_md5(video_base64: String) -> Result<String, String> {
-    // 从base64中提取实际的视频数据
-    let video_data = video_base64
-        .split("base64,")
-        .nth(1)
-        .ok_or("无效的视频数据格式")?;
-
-    let video_bytes = base64::decode(video_data).map_err(|e| format!("解码视频数据失败: {}", e))?;
-
-    // 计算MD5
+fn calculate_md5(video_path: String) -> Result<String, String> {
+    // 打开文件
+    let mut file = std::fs::File::open(&video_path)
+        .map_err(|e| format!("打开文件失败: {}", e))?;
+    
+    // 创建MD5 hasher
     let mut hasher = Md5::new();
-    hasher.update(&video_bytes);
+    
+    // 创建缓冲区来分块读取文件
+    let mut buffer = [0; 8192]; // 使用更小的缓冲区(8KB)
+    
+    // 循环读取文件内容并更新hasher
+    loop {
+        match file.read(&mut buffer) {
+            Ok(0) => break, // 文件读取完毕
+            Ok(n) => {
+                hasher.update(&buffer[..n]);
+            }
+            Err(e) => return Err(format!("读取文件失败: {}", e)),
+        }
+    }
+    
+    // 计算最终的MD5值
     let result = hasher.finalize();
-
+    
     // 将结果转换为十六进制字符串
     Ok(format!("{:x}", result))
 }
