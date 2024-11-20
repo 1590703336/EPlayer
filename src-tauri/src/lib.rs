@@ -17,6 +17,9 @@ use youtube_captions::format::Format;
 use youtube_captions::language_tags::LanguageTag;
 use youtube_captions::{CaptionScraper, Digest, DigestScraper};
 
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt; 
+
 use md5::{Digest as Md5Digest, Md5};
 
 const LANGUAGES: [&'static str; 8] = ["en", "zh-TW", "ja", "zh-Hant", "ko", "zh", "es", "fr"]; //英语、繁体中文、日语、韩语、简体中文、西班牙语、法语
@@ -375,8 +378,9 @@ async fn extract_audio_internal(video_path: &str) -> Result<Vec<u8>, String> {
     println!("输出音频路径: {}", temp_output_str);
 
     // 执行 ffmpeg 命令
-    let output = Command::new(&ffmpeg_path)
-        .args(&[
+    let output = {
+        let mut cmd = Command::new(&ffmpeg_path);
+        cmd.args(&[
             "-hwaccel",
             "auto", // 自动选择可用的硬件加速
             "-i",
@@ -386,9 +390,15 @@ async fn extract_audio_internal(video_path: &str) -> Result<Vec<u8>, String> {
             "-f", "mp3",
             "-threads", "0",
             &temp_output_str,
-        ])
-        .output()
-        .map_err(|e| format!("ffmpeg执行失败: {}", e))?;
+        ]);
+
+        #[cfg(target_os = "windows")]
+        {
+            cmd.creation_flags(0x08000000);  // 使用 Windows 特定的标志来隐藏控制台窗口
+        }
+
+        cmd.output().map_err(|e| format!("ffmpeg执行失败: {}", e))?
+    };
 
     // 检查命令执行结果
     if !output.status.success() {
@@ -912,7 +922,7 @@ async fn update_user_version(
         .await
         .map_err(|e| format!("更新请求失败: {:?}", e))?;
 
-    // 获取响应文本
+    // 获取响��文本
     let response_text = response
         .text()
         .await
