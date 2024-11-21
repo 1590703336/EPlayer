@@ -14,29 +14,20 @@
       "active": true,
       "dialog": true,
       "windows": {
-        "installMode": "basicUi"
+        "installMode": "basicUi",
+        "drag_and_drop": true
       },
       "endpoints": [
         "https://gitee.com/xzkids/eplayer-assets/raw/master/version.json"
       ],
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDc4ODVEOTNFRTA5M0E1MzQKUldRMHBaUGdQdG1GZU1MQlFsWTFnZVFyYVBHMzZEanNPbUZncThJRGk2WmhzOVNiYlBYcHpVMEMK"
     },
-    "fs": {
-      "all": true,
-      "readFile": true,
-      "writeFile": true,
-      "readDir": true,
-      "copyFile": true,
-      "createDir": true,
-      "removeDir": true,
-      "removeFile": true,
-      "renameFile": true,
-      "exists": true
-    },
+
     "protocol": {
         "asset": true,
         "assetScope": ["$APPDATA/assets/*"]
     }
+    
   },
   "app": {
     "withGlobalTauri": true,
@@ -44,7 +35,8 @@
       {
         "title": "EPlayer      ←:previous subtitle  →:next subtitle  ↑:speed up  ↓:speed down  space:play/pause  r:repeat mode  h:help",
         "width": 1200,
-        "height": 800
+        "height": 800,
+        "dragDropEnabled": true      
       }
     ],
     "security": {
@@ -52,7 +44,7 @@
       "assetProtocol": {
         "enable": true,
         "scope": ["**", "**/**"]
-      }
+      }      
     }    
   },
   "bundle": {

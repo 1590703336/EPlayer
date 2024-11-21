@@ -18,7 +18,7 @@ use youtube_captions::language_tags::LanguageTag;
 use youtube_captions::{CaptionScraper, Digest, DigestScraper};
 
 #[cfg(target_os = "windows")]
-use std::os::windows::process::CommandExt; 
+use std::os::windows::process::CommandExt;
 
 use md5::{Digest as Md5Digest, Md5};
 
@@ -276,8 +276,10 @@ async fn communicate_with_openai(
     role: AssistantRole,
 ) -> Result<AIResponse, String> {
     let client = Client::new();
+    #[cfg(debug_assertions)]
+    let url = "http://localhost:3000/api/openai";
+    #[cfg(not(debug_assertions))]
     let url = "https://eplayer-server.vercel.app/api/openai";
-    // let url = "http://localhost:3000/api/openai";
 
     // 构建请求体，将角色信息传给代理
     let request_body = ProxyRequest {
@@ -386,15 +388,18 @@ async fn extract_audio_internal(video_path: &str) -> Result<Vec<u8>, String> {
             "-i",
             &video_path, // 直接使用视频文件路径
             "-vn",
-            "-acodec", "mp3",
-            "-f", "mp3",
-            "-threads", "0",
+            "-acodec",
+            "mp3",
+            "-f",
+            "mp3",
+            "-threads",
+            "0",
             &temp_output_str,
         ]);
 
         #[cfg(target_os = "windows")]
         {
-            cmd.creation_flags(0x08000000);  // 使用 Windows 特定的标志来隐藏控制台窗口
+            cmd.creation_flags(0x08000000); // 使用 Windows 特定的标志来隐藏控制台窗口
         }
 
         cmd.output().map_err(|e| format!("ffmpeg执行失败: {}", e))?
@@ -407,8 +412,8 @@ async fn extract_audio_internal(video_path: &str) -> Result<Vec<u8>, String> {
     }
 
     // 读取输出文件
-    let mut file = std::fs::File::open(&temp_output)
-        .map_err(|e| format!("无法读取输出文件: {}", e))?;
+    let mut file =
+        std::fs::File::open(&temp_output).map_err(|e| format!("无法读取输出文件: {}", e))?;
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer)
         .map_err(|e| format!("读取文件失败: {}", e))?;
@@ -493,10 +498,13 @@ struct TranscriptionResult {
 
 // 修改转写函数,直接接收视频路径
 #[tauri::command]
-async fn transcribe_audio(video_path: String, language: String) -> Result<TranscriptionResult, String> {
+async fn transcribe_audio(
+    video_path: String,
+    language: String,
+) -> Result<TranscriptionResult, String> {
     // 先提取音频
     let audio_bytes = extract_audio_internal(&video_path).await?;
-    
+
     let auth = Auth::from_env().map_err(|e| format!("API密钥错误: {:?}", e))?;
     let client = reqwest::Client::new();
 
@@ -728,20 +736,20 @@ async fn download_subtitle(file_id: String) -> Result<String, String> {
 #[tauri::command]
 fn calculate_md5(video_path: String) -> Result<String, String> {
     // 打开文件
-    let mut file = std::fs::File::open(&video_path)
-        .map_err(|e| format!("打开文件失败: {}", e))?;
-    
+    let mut file = std::fs::File::open(&video_path).map_err(|e| format!("打开文件失败: {}", e))?;
+
     // 获取文件大小
-    let file_size = file.metadata()
+    let file_size = file
+        .metadata()
         .map_err(|e| format!("获取文件信息失败: {}", e))?
         .len();
-    
+
     // 设置读取大小为1MB
     const READ_SIZE: u64 = 1024 * 1024; // 1MB in bytes
-    
+
     // 创建MD5 hasher
     let mut hasher = Md5::new();
-    
+
     if file_size <= READ_SIZE {
         // 如果文件小于1MB,直接读取整个文件
         let mut buffer = vec![0; file_size as usize];
@@ -760,11 +768,11 @@ fn calculate_md5(video_path: String) -> Result<String, String> {
             }
             Err(e) => return Err(format!("读取文件开头失败: {}", e)),
         }
-        
+
         // 移动到最后1MB
         file.seek(std::io::SeekFrom::End(-(READ_SIZE as i64)))
             .map_err(|e| format!("定位到文件末尾失败: {}", e))?;
-            
+
         // 读取最后1MB
         let mut end_buffer = vec![0; READ_SIZE as usize];
         match file.read(&mut end_buffer) {
@@ -774,10 +782,10 @@ fn calculate_md5(video_path: String) -> Result<String, String> {
             Err(e) => return Err(format!("读取文件末尾失败: {}", e)),
         }
     }
-    
+
     // 计算最终的MD5值
     let result = hasher.finalize();
-    
+
     // 将结果转换为十六进制字符串
     Ok(format!("{:x}", result))
 }
@@ -807,8 +815,10 @@ async fn register_user(
     native_language: String,
 ) -> Result<RegisterResponse, String> {
     let client = Client::new();
-    //let url = "https://eplayer-server.vercel.app/api/user";
+    #[cfg(debug_assertions)]
     let url = "http://localhost:3000/api/user";
+    #[cfg(not(debug_assertions))]
+    let url = "https://eplayer-server.vercel.app/api/user";
 
     // 构建请求体
     let request_body = RegisterRequest {
@@ -910,8 +920,10 @@ async fn update_user_version(
     version: String,
 ) -> Result<UpdateUserResponse, String> {
     let client = Client::new();
-    //let url = "https://eplayer-server.vercel.app/api/user";
+    #[cfg(debug_assertions)]
     let url = "http://localhost:3000/api/user";
+    #[cfg(not(debug_assertions))]
+    let url = "https://eplayer-server.vercel.app/api/user";
 
     // 发送 PUT 请求到 Vercel API
     let response = client
@@ -956,7 +968,10 @@ struct LoginResponse {
 #[tauri::command]
 async fn login_user(id: String) -> Result<LoginResponse, String> {
     let client = Client::new();
+    #[cfg(debug_assertions)]
     let url = "http://localhost:3000/api/user"; // 或者你的 Vercel API 地址
+    #[cfg(not(debug_assertions))]
+    let url = "https://eplayer-server.vercel.app/api/user"; // 或者你的 Vercel API 地址
 
     // 发送 GET 请求到 Vercel API
     let response = client
@@ -1051,8 +1066,10 @@ async fn update_user_stats(
     wallet: f64,
 ) -> Result<UpdateUserResponse, String> {
     let client = Client::new();
-    //let url = "https://eplayer-server.vercel.app/api/user";
+    #[cfg(debug_assertions)]
     let url = "http://localhost:3000/api/user";
+    #[cfg(not(debug_assertions))]
+    let url = "https://eplayer-server.vercel.app/api/user";
 
     // 发送 PUT 请求到 Vercel API
     let response = client
@@ -1103,7 +1120,10 @@ struct UserData {
 #[tauri::command]
 async fn get_user_data(user_id: String) -> Result<UserDataDetails, String> {
     let client = Client::new();
+    #[cfg(debug_assertions)]
     let url = "http://localhost:3000/api/user";
+    #[cfg(not(debug_assertions))]
+    let url = "https://eplayer-server.vercel.app/api/user";
 
     // 发送 GET 请求到 Vercel API
     let response = client
@@ -1148,13 +1168,13 @@ struct UserDataDetails {
 
 #[tauri::command]
 fn read_file(path: String) -> Result<String, String> {
-    std::fs::read_to_string(path)
-        .map_err(|e| format!("读取文件失败: {}", e))
+    std::fs::read_to_string(path).map_err(|e| format!("读取文件失败: {}", e))
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
@@ -1172,10 +1192,20 @@ pub fn run() {
             update_user_version,
             login_user,        // 添加登录命令
             update_user_stats, // 添加更新用户统计信息的命令
-            get_user_data,      // 添加新命令
+            get_user_data,     // 添加新命令
             read_file,
         ])
-        .plugin(tauri_plugin_log::Builder::new().build())
+        .plugin(
+            tauri_plugin_log::Builder::new()
+                .targets([
+                    Target::new(TargetKind::Stdout),
+                    Target::new(TargetKind::LogDir {
+                        file_name: Some("logs".to_string()),
+                    }),
+                    Target::new(TargetKind::Webview),
+                ])
+                .build(),
+        )
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
