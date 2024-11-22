@@ -505,7 +505,9 @@ async fn transcribe_audio(
     // 先提取音频
     let audio_bytes = extract_audio_internal(&video_path).await?;
 
-    let auth = Auth::from_env().map_err(|e| format!("API密钥错误: {:?}", e))?;
+    // let auth = Auth::from_env().map_err(|e| format!("API密钥错误: {:?}", e))?;    
+    let open_key="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";
+    let auth = Auth::new(open_key);
     let client = reqwest::Client::new();
 
     // 创建multipart form

@@ -11,6 +11,9 @@ import guideImage1 from './assets/guide1.png';
 import api from './api';
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { convertFileSrc } from '@tauri-apps/api/core';
+import { warn, debug, trace, info, error } from '@tauri-apps/plugin-log';
+
+
 
 function App() {
   
@@ -734,7 +737,7 @@ function App() {
         });
 
         console.log('音频转写完成:', result);
-
+        info('音频转写完成:', result);
 
         if (!shouldCancelGeneration) {
           const newDuration = result.duration;
@@ -769,8 +772,10 @@ function App() {
               }, headers);
 
               console.log('字幕已保存到数据库');
+              info('字幕已保存到数据库');
             } catch (error) {
               console.error('保存字幕信息失败:', error);
+              error('保存字幕信息失败:', error)
               // 这里可以添加一些错误提示，但不影响用户继续使用已生成的字幕
             }
           })();
@@ -779,7 +784,8 @@ function App() {
     } catch (error) {
       if (!shouldCancelGeneration) {
         console.error('生成字幕失败:', error);
-        alert('生成字幕失败: ' + error.message);
+        alert('生成字幕失败: ' + error);
+        error('生成字幕失败: ' + error);
       }
     } finally {
       setIsGeneratingSubtitles(false);
