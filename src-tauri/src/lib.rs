@@ -1,8 +1,7 @@
-// Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-use base64::encode;
 use openai_api_rust::chat::*;
 use openai_api_rust::completions::*;
 use openai_api_rust::*;
+use reqwest::multipart;
 use reqwest::Client;
 use serde::Deserialize;
 use serde::Serialize;
@@ -16,6 +15,7 @@ use uuid::Uuid;
 use youtube_captions::format::Format;
 use youtube_captions::language_tags::LanguageTag;
 use youtube_captions::{CaptionScraper, Digest, DigestScraper};
+use base64::{decode, encode};
 
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
@@ -59,6 +59,13 @@ struct OpenAIRequest {
 #[derive(Serialize, Deserialize)]
 struct OpenAIResponse {
     choices: Vec<Choice>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct OpenAIWhisperRequest {
+    audio_file: Vec<u8>,
+    language: String,
+    prompt: String,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -365,149 +372,63 @@ fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
 }
 
-// 修改为内部函数,不再暴露给前端
-async fn extract_audio_internal(video_path: &str) -> Result<Vec<u8>, String> {
-    let ffmpeg_path = get_ffmpeg_path()?;
-    println!("ffmpeg路径: {}", ffmpeg_path);
-
-    // 使用系统临时目录
-    let temp_dir = std::env::temp_dir();
-    let uuid = Uuid::new_v4();
-    let temp_output = temp_dir.join(format!("output_{}.mp3", uuid));
-    let temp_output_str = temp_output.to_string_lossy().to_string();
-
-    println!("输入视频路径: {}", video_path);
-    println!("输出音频路径: {}", temp_output_str);
-
-    // 执行 ffmpeg 命令
-    let output = {
-        let mut cmd = Command::new(&ffmpeg_path);
-        cmd.args(&[
-            "-hwaccel",
-            "auto", // 自动选择可用的硬件加速
-            "-i",
-            &video_path, // 直接使用视频文件路径
-            "-vn",
-            "-acodec",
-            "mp3",
-            "-f",
-            "mp3",
-            "-threads",
-            "0",
-            &temp_output_str,
-        ]);
-
-        #[cfg(target_os = "windows")]
-        {
-            cmd.creation_flags(0x08000000); // 使用 Windows 特定的标志来隐藏控制台窗口
-        }
-
-        cmd.output().map_err(|e| format!("ffmpeg执行失败: {}", e))?
-    };
-
-    // 检查命令执行结果
-    if !output.status.success() {
-        let error = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("音频提取失败: {}", error));
+fn decrypt_api_key(encrypted_api_key: &str) -> Result<String, String> {
+    // 分割加密的 api_key
+    let parts: Vec<&str> = encrypted_api_key.split('.').collect();
+    if parts.len() != 2 {
+        return Err("Invalid encrypted API key format".into());
     }
 
-    // 读取输出文件
-    let mut file =
-        std::fs::File::open(&temp_output).map_err(|e| format!("无法读取输出文件: {}", e))?;
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer)
-        .map_err(|e| format!("读取文件失败: {}", e))?;
+    // 获取反转的 Base64 编码字符串和 ENCRYPTION_SALT
+    let reversed_base64 = parts[0];
+    let salt_base64 = parts[1];
 
-    // 清理临时文件
-    let _ = std::fs::remove_file(&temp_output);
+    // 反转 Base64 编码字符串
+    let base64_string: String = reversed_base64.chars().rev().collect();
 
-    Ok(buffer)
-}
+    // 解码 Base64 字符串
+    let decoded_bytes = decode(&base64_string).map_err(|e| format!("解码Base64字符串失败: {}", e))?;
+    let decoded_string = String::from_utf8(decoded_bytes).map_err(|e| format!("解码Base64字符串失败: {}", e))?;
 
-fn get_ffmpeg_path() -> Result<String, String> {
-    #[cfg(debug_assertions)] // 开发模式
-    {
-        let current_dir = std::env::current_dir().map_err(|_| "无法获取当前目录".to_string())?;
+    // 解码 ENCRYPTION_SALT
+    let salt_bytes = decode(salt_base64).map_err(|e| format!("解码ENCRYPTION_SALT失败: {}", e))?;
+    let salt = String::from_utf8(salt_bytes).map_err(|e| format!("解码ENCRYPTION_SALT失败: {}", e))?;
 
-        #[cfg(target_os = "windows")] // 添加windows条件
-        let ffmpeg_name = "ffmpeg-x86_64-pc-windows-msvc.exe";
-        #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
-        let ffmpeg_name = "ffmpeg-x86_64-apple-darwin";
-        #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
-        let ffmpeg_name = "ffmpeg-aarch64-apple-darwin";
-        #[cfg(target_os = "linux")] // 添加x86_64 linux条件
-        let ffmpeg_name = "ffmpeg-x86_64-unknown-linux-gnu";
-
-        // 尝试在 binaries 目录查找
-        let binaries_path = current_dir.join("binaries").join(ffmpeg_name);
-
-        println!("binaries路径: {}", binaries_path.to_string_lossy());
-
-        if binaries_path.exists() {
-            return Ok(binaries_path.to_string_lossy().to_string());
-        }
-
-        Err("开发模式下找不到 ffmpeg".to_string())
+    // 检查解码后的字符串是否以 ENCRYPTION_SALT 结尾
+    if !decoded_string.ends_with(&salt) {
+        return Err("Decryption failed: salt mismatch".into());
     }
 
-    #[cfg(not(debug_assertions))] // 发布模式
-    {
-        let current_exe =
-            std::env::current_exe().map_err(|_| "无法获取当前程序路径".to_string())?;
-        let app_dir = current_exe.parent().ok_or("无法获取程序目录".to_string())?;
+    // 提取原始的 OPENAI_API_KEY
+    let api_key = decoded_string.trim_end_matches(&salt).to_string();
 
-        #[cfg(target_os = "windows")]
-        let ffmpeg_path = app_dir.join("ffmpeg.exe");
-        #[cfg(not(target_os = "windows"))]
-        let ffmpeg_path = app_dir.join("ffmpeg");
-
-        if ffmpeg_path.exists() {
-            #[cfg(not(target_os = "windows"))]
-            {
-                // 在 Unix 系统上设置执行权限
-                use std::os::unix::fs::PermissionsExt;
-                std::fs::set_permissions(&ffmpeg_path, std::fs::Permissions::from_mode(0o755))
-                    .map_err(|e| format!("设置执行权限失败: {}", e))?;
-            }
-
-            Ok(ffmpeg_path.to_string_lossy().to_string())
-        } else {
-            Err("找不到 ffmpeg，请确保程序目录下存在 ffmpeg".to_string())
-        }
-    }
+    Ok(api_key)
 }
 
-#[derive(Serialize, Deserialize)]
-struct WhisperResponse {
-    text: String,
-    segments: Vec<WhisperSegment>,
-}
-
-#[derive(Serialize, Deserialize)]
-struct WhisperSegment {
-    start: f64,
-    end: f64,
-    text: String,
-}
-
-#[derive(Serialize)]
-struct TranscriptionResult {
-    subtitles: Vec<Subtitle>,
-    duration: f64, // 添加音频时长字段
-}
-
-// 修改转写函数,直接接收视频路径
 #[tauri::command]
-async fn transcribe_audio(
-    video_path: String,
-    language: String,
-) -> Result<TranscriptionResult, String> {
+async fn transcribe_audio(video_path: String,  language: String, jwt: String) -> Result<TranscriptionResult, String> {
     // 先提取音频
     let audio_bytes = extract_audio_internal(&video_path).await?;
 
-    // let auth = Auth::from_env().map_err(|e| format!("API密钥错误: {:?}", e))?;    
-    let open_key="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";
-    let auth = Auth::new(open_key);
+    #[cfg(debug_assertions)]
+    let url = "http://localhost:3000/api/openai/getkey";
+    #[cfg(not(debug_assertions))]
+    let url = "https://eplayer-server.vercel.app/api/openai/getkey";    
+
+    let client = reqwest::Client::new();
+    let response = client.get(url)
+        .header("Authorization", format!("Bearer {}", jwt))
+        .send()
+        .await
+        .map_err(|e| format!("请求失败: {}", e))?;
+    println!("response: {:?}", response);
+    let json = response.json::<serde_json::Value>().await.map_err(|e| format!("解析响应失败: {}", e))?;
+    println!("json: {:?}", json);
+    let encrypted_open_key = json["api_key"].as_str().ok_or("无法获取API密钥")?;
+    let open_key = decrypt_api_key(encrypted_open_key)?;    
+    println!("open_key: {}", open_key);   
+
+    let auth = Auth::new(&open_key);
     let client = reqwest::Client::new();
 
     // 创建multipart form
@@ -579,6 +500,307 @@ async fn transcribe_audio(
         duration,
     })
 }
+
+// #[tauri::command]
+// async fn transcribe_audio(
+//     video_path: String,
+//     language: String,
+//     jwt: String,
+// ) -> Result<TranscriptionResult, String> {
+//     println!("Rust开始转写音频...");
+//     // #[cfg(debug_assertions)]
+//     let url = "http://localhost:3000/api/openai/transcribe_audio";
+//     // #[cfg(not(debug_assertions))]
+//     // let url = "https://eplayer-server.vercel.app/api/openai/transcribe_audio";
+
+//     // let url = "https://eplayer-server.vercel.app/api/openai/transcribe_audio";
+
+//     let prompt = match language.as_str() {
+//                 "en" => "Please segment based on complete sentences and natural speech pauses. Avoid breaking mid-sentence.",
+//                 "zh" => "请严格按照完整句子和自然停顿分段。避免在句子中间断开。",
+//                 "ja" => "文章の完全な意味と自な休止点に基づいて分割してください。文の途中で区切らないでください。",
+//                 _ => "Please segment based on complete sentences and natural speech pauses.",
+//     };
+
+//     let audio_bytes = extract_audio_internal(&video_path).await?;
+//     let form = multipart::Form::new()
+//         .text("language", language.to_string())
+//         .text("prompt", prompt.to_string())
+//         .part(
+//             "audio_file",
+//             multipart::Part::bytes(audio_bytes).file_name("audio.webm"),
+//         );
+
+//     let client = reqwest::Client::new();
+//     let response = client
+//         .post(url)
+//         .header("Authorization", format!("Bearer {}", jwt))
+//         .multipart(form)
+//         .send()
+//         .await
+//         .map_err(|e| format!("API请求失败: {}", e))?;
+
+//     println!("response: {:?}", response);
+//     // let client = Client::new();
+//     // let request_body = OpenAIWhisperRequest {
+//     //     language: language,
+//     //     audio_file: audio_bytes,
+//     //     prompt: prompt.to_string(),
+//     // };
+
+//     // // 发送请求到代理服务器
+//     // let response = client
+//     //     .post(url)
+//     //     .header("Content-Type", "application/json")
+//     //     .header("Authorization", format!("Bearer {}", jwt))
+//     //     .json(&request_body)
+//     //     .send()
+//     //     .await
+//     //     .map_err(|e| format!("API请求失败: {}", e))?;
+
+//     // println!("response: {:?}", response);
+
+//     // 解析响应
+//     let whisper_response = response
+//         .json::<WhisperResponse>()
+//         .await
+//         .map_err(|e| format!("解析响应失败: {}", e))?;
+
+//     // 将Whisper响应转换为字幕格式
+//     let subtitles: Vec<Subtitle> = whisper_response
+//         .segments
+//         .iter()
+//         .enumerate()
+//         .map(|(i, segment)| Subtitle {
+//             id: (i + 1) as u32,
+//             text: segment.text.clone(),
+//             startSeconds: (segment.start * 100.0).round() / 100.0, // 保留两位小数
+//             endSeconds: (segment.end * 100.0).round() / 100.0,     // 保留两位小数
+//         })
+//         .collect();
+
+//     // 计算总时长（使用最后一个片段的结束时间）
+//     let duration = whisper_response
+//         .segments
+//         .last()
+//         .map(|segment| segment.end)
+//         .unwrap_or(0.0);
+
+//     Ok(TranscriptionResult {
+//         subtitles,
+//         duration,
+//     })
+// }
+// 修改为内部函数,不再暴露给前端
+async fn extract_audio_internal(video_path: &str) -> Result<Vec<u8>, String> {
+    let ffmpeg_path = get_ffmpeg_path()?;
+    // println!("ffmpeg路径: {}", ffmpeg_path);
+
+    // 使用系统临时目录
+    let temp_dir = std::env::temp_dir();
+    let uuid = Uuid::new_v4();
+    let temp_output = temp_dir.join(format!("output_{}.webm", uuid));
+    let temp_output_str = temp_output.to_string_lossy().to_string();
+
+    // println!("输入视频路径: {}", video_path);
+    // println!("输出音频路径: {}", temp_output_str);
+
+    // 执行 ffmpeg 命令
+    let output = {
+        let mut cmd = Command::new(&ffmpeg_path);
+        cmd.args(&[
+            "-hwaccel",
+            "auto", // 自动选择可用的硬件加速
+            "-i",
+            &video_path, // 直接使用视频文件路径
+            "-vn",
+            "-acodec",
+            "libopus",
+            "-f",
+            "webm",
+            "-threads",
+            "0",
+            &temp_output_str,
+        ]);
+
+        #[cfg(target_os = "windows")]
+        {
+            cmd.creation_flags(0x08000000); // 使用 Windows 特定的标志来隐藏控制台窗口
+        }
+
+        cmd.output().map_err(|e| format!("ffmpeg执行失败: {}", e))?
+    };
+
+    // 检查命令执行结果
+    if !output.status.success() {
+        let error = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("音频提取失败: {}", error));
+    }
+
+    // 读取输出文件
+    let mut file =
+        std::fs::File::open(&temp_output).map_err(|e| format!("无法读取输出文件: {}", e))?;
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer)
+        .map_err(|e| format!("读取文件失败: {}", e))?;
+
+    // 清理临时文件
+    let _ = std::fs::remove_file(&temp_output);
+
+    Ok(buffer)
+}
+fn get_ffmpeg_path() -> Result<String, String> {
+    #[cfg(debug_assertions)] // 开发模式
+    {
+        let current_dir = std::env::current_dir().map_err(|_| "无法获取当前目录".to_string())?;
+
+        #[cfg(target_os = "windows")] // 添加windows条件
+        let ffmpeg_name = "ffmpeg-x86_64-pc-windows-msvc.exe";
+        #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
+        let ffmpeg_name = "ffmpeg-x86_64-apple-darwin";
+        #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+        let ffmpeg_name = "ffmpeg-aarch64-apple-darwin";
+        #[cfg(target_os = "linux")] // 添加x86_64 linux条件
+        let ffmpeg_name = "ffmpeg-x86_64-unknown-linux-gnu";
+
+        // 尝试在 binaries 目录查找
+        let binaries_path = current_dir.join("binaries").join(ffmpeg_name);
+
+        // println!("binaries路径: {}", binaries_path.to_string_lossy());
+
+        if binaries_path.exists() {
+            return Ok(binaries_path.to_string_lossy().to_string());
+        }
+
+        Err("开发模式下找不到 ffmpeg".to_string())
+    }
+
+    #[cfg(not(debug_assertions))] // 发布模式
+    {
+        let current_exe =
+            std::env::current_exe().map_err(|_| "无法获取当前程序路径".to_string())?;
+        let app_dir = current_exe.parent().ok_or("无法获取程序目录".to_string())?;
+
+        #[cfg(target_os = "windows")]
+        let ffmpeg_path = app_dir.join("ffmpeg.exe");
+        #[cfg(not(target_os = "windows"))]
+        let ffmpeg_path = app_dir.join("ffmpeg");
+
+        if ffmpeg_path.exists() {
+            #[cfg(not(target_os = "windows"))]
+            {
+                // 在 Unix 系统上设置执行权限
+                use std::os::unix::fs::PermissionsExt;
+                std::fs::set_permissions(&ffmpeg_path, std::fs::Permissions::from_mode(0o755))
+                    .map_err(|e| format!("设置执行权限失败: {}", e))?;
+            }
+
+            Ok(ffmpeg_path.to_string_lossy().to_string())
+        } else {
+            Err("找不到 ffmpeg，请确保程序目录下存在 ffmpeg".to_string())
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+struct WhisperResponse {
+    text: String,
+    segments: Vec<WhisperSegment>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct WhisperSegment {
+    start: f64,
+    end: f64,
+    text: String,
+}
+
+#[derive(Serialize)]
+struct TranscriptionResult {
+    subtitles: Vec<Subtitle>,
+    duration: f64, // 添加音频时长字段
+}
+
+// 修改转写函数,直接接收视频路径
+// #[tauri::command]
+// async fn transcribe_audio(video_path: String,  language: String) -> Result<TranscriptionResult, String> {
+//     // 先提取音频
+//     let audio_bytes = extract_audio_internal(&video_path).await?;
+
+//     // let auth = Auth::from_env().map_err(|e| format!("API密钥错误: {:?}", e))?;
+//     let open_key="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";
+//     let auth = Auth::new(open_key);
+//     let client = reqwest::Client::new();
+
+//     // 创建multipart form
+//     let prompt = match language.as_str() {
+//         "en" => "Please segment based on complete sentences and natural speech pauses. Avoid breaking mid-sentence.",
+//         "zh" => "请严格按照完整句子和自然停顿分段。避免在句子中间断开。",
+//         "ja" => "文章の完全な意味と自な休止点に基づいて分割してください。文の途中で区切らないでください。",
+//         _ => "Please segment based on complete sentences and natural speech pauses.",
+//     };
+
+//     let form = reqwest::multipart::Form::new()
+//         .part(
+//             "file",
+//             reqwest::multipart::Part::bytes(audio_bytes)
+//                 .file_name("audio.mp3")
+//                 .mime_str("audio/mp3")
+//                 .map_err(|e| format!("创建表单失败: {}", e))?,
+//         )
+//         .text("model", "whisper-1")
+//         .text("language", language)
+//         .text("response_format", "verbose_json")
+//         .text("timestamp_granularities", "segment")
+//         .text("prompt", prompt)
+//         .text("temperature", "0.1") // 降低温度以获得更稳定的结果
+//         //.text("compression_ratio_threshold", "3.0") // 增加压缩比阈值
+//         //.text("no_speech_threshold", "0.4") // 增加静音阈值
+//         //.text("compression_ratio_threshold", "2.0")
+//         //.text("no_speech_threshold", "0.2")
+//         .text("condition_on_previous_text", "true") // 启用条件文本
+//         .text("vad_filter", "true"); // 启用VAD过滤
+
+//     // 发送请求到Whisper API
+//     let response = client
+//         .post("https://api.openai.com/v1/audio/transcriptions")
+//         .header("Authorization", format!("Bearer {}", auth.api_key))
+//         .multipart(form)
+//         .send()
+//         .await
+//         .map_err(|e| format!("API请求失败: {}", e))?;
+
+//     // 解析响应
+//     let whisper_response = response
+//         .json::<WhisperResponse>()
+//         .await
+//         .map_err(|e| format!("解析响应失败: {}", e))?;
+
+//     // 将Whisper响应转换为字幕格式
+//     let subtitles: Vec<Subtitle> = whisper_response
+//         .segments
+//         .iter()
+//         .enumerate()
+//         .map(|(i, segment)| Subtitle {
+//             id: (i + 1) as u32,
+//             text: segment.text.clone(),
+//             startSeconds: (segment.start * 100.0).round() / 100.0, // 保留两位小数
+//             endSeconds: (segment.end * 100.0).round() / 100.0,     // 保留两位小数
+//         })
+//         .collect();
+
+//     // 计算总时长（使用最后一个片段的结束时间）
+//     let duration = whisper_response
+//         .segments
+//         .last()
+//         .map(|segment| segment.end)
+//         .unwrap_or(0.0);
+
+//     Ok(TranscriptionResult {
+//         subtitles,
+//         duration,
+//     })
+// }
 
 // 添加新的结构体用于字幕搜索结果
 #[derive(Serialize)]

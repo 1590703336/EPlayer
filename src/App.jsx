@@ -731,9 +731,11 @@ function App() {
           return;
         }
 
+        console.log('开始转写音频...');
         const result = await invoke('transcribe_audio', {
           videoPath: uploadedFilePath,
-          language: whisperLanguage
+          language: whisperLanguage,
+          jwt: token
         });
 
         console.log('音频转写完成:', result);
