@@ -12,6 +12,8 @@ import api from './api';
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { warn, debug, trace, info, error } from '@tauri-apps/plugin-log';
+import { writeTextFile } from '@tauri-apps/plugin-fs';
+import { dirname } from '@tauri-apps/api/path';
 
 
 
@@ -754,6 +756,22 @@ function App() {
           // 立即设置字幕显示
           setSubtitles(result.subtitles);
 
+          // 构建SRT内容
+          const srtContent = result.subtitles.map(subtitle => {
+            const startTime = formatSrtTime(subtitle.startSeconds);
+            const endTime = formatSrtTime(subtitle.endSeconds);
+            return `${subtitle.id}\n${startTime} --> ${endTime}\n${subtitle.text}\n`;
+          }).join('\n');
+
+          // 获取视频文件所在目录，并构建srt文件路径
+          const srtPath = uploadedFilePath.replace(/\.[^/.]+$/, '.srt');
+          console.log("srtPath:", srtPath);
+
+          // 保存SRT文件
+          await writeTextFile(srtPath, srtContent);
+          console.log('字幕文件已保存:', srtPath);
+          info('字幕文件已保存:', srtPath);
+
           // 在后台异步处理统计信息更新和字幕上传
           (async () => {
             try {
@@ -792,6 +810,16 @@ function App() {
     } finally {
       setIsGeneratingSubtitles(false);
     }
+  };
+
+  // 添加格式化SRT时间的辅助函数
+  const formatSrtTime = (seconds) => {
+    const pad = (num) => num.toString().padStart(2, '0');
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = Math.floor(seconds % 60);
+    const ms = Math.floor((seconds % 1) * 1000);
+    return `${pad(hours)}:${pad(minutes)}:${pad(secs)},${ms.toString().padStart(3, '0')}`;
   };
 
   // 添加处理搜索的函数
@@ -985,7 +1013,7 @@ function App() {
     setShowAboutMenu(false);
   };
 
-  // 添加刷新笔记的函数
+  // 添加刷笔记的函数
   const refreshNotebook = async () => {
     // 检查是否登录
     if (!currentUserId || !token) {
@@ -1203,7 +1231,7 @@ function App() {
                 ) : (
                   <>
                     <i className="fas fa-closed-captioning" />
-                    生成 AI 字幕
+                    生成 AI 字
                   </>
                 )}
               </button>
