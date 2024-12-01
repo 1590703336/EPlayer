@@ -2,8 +2,14 @@ import axios from "axios";
 import md5 from "md5";
 let api={}
 
-//const BASE_URL = "http://localhost:3000/"; // 本地
-const BASE_URL = "https://eplayer-server.vercel.app/"; // 线上
+let BASE_URL = "";
+if (process.env.NODE_ENV === 'development') {
+    BASE_URL = "http://localhost:3000/"; // 本地
+} else {
+    BASE_URL = "https://eplayer-server.vercel.app/"; // 线上
+}
+console.log(BASE_URL)
+
 api = axios.create({
 
     withCredentials: false, 
