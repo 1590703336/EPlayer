@@ -16,6 +16,8 @@ use youtube_captions::format::Format;
 use youtube_captions::language_tags::LanguageTag;
 use youtube_captions::{CaptionScraper, Digest, DigestScraper};
 use base64::{decode, encode};
+use std::fs::File;
+use std::io::Write;
 
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
@@ -499,6 +501,19 @@ async fn transcribe_audio(video_path: String,  language: String, jwt: String) ->
         subtitles,
         duration,
     })
+}
+
+#[tauri::command]
+fn write_file(path: String, content: String) -> Result<(), String> {
+    match File::create(&path) {
+        Ok(mut file) => {
+            if let Err(e) = file.write_all(content.as_bytes()) {
+                return Err(format!("写入文件失败: {}", e));
+            }
+            Ok(())
+        }
+        Err(e) => Err(format!("创建文件失败: {}", e)),
+    }
 }
 
 // #[tauri::command]
@@ -1418,6 +1433,7 @@ pub fn run() {
             update_user_stats, // 添加更新用户统计信息的命令
             get_user_data,     // 添加新命令
             read_file,
+            write_file, // 添加写入文件的命令
         ])
         .plugin(
             tauri_plugin_log::Builder::new()

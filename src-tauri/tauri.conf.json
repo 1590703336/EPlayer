@@ -10,6 +10,15 @@
     "frontendDist": "../dist"
   },
   "plugins": {
+    "fs": {
+      "requireLiteralLeadingDot": false      
+    },
+    "capabilities": {
+      "fs": {
+        "writeFile": true,
+        "scope": ["**/*.srt"]
+      }
+    },
     "updater": {
       "active": true,
       "dialog": true,
@@ -44,7 +53,7 @@
       "assetProtocol": {
         "enable": true,
         "scope": ["**", "**/**"]
-      }      
+      }
     }    
   },
   "bundle": {
@@ -60,5 +69,4 @@
     ],
     "externalBin": ["binaries/ffmpeg"]
   }
-  
 }

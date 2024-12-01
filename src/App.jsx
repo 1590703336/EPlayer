@@ -12,6 +12,8 @@ import api from './api';
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { warn, debug, trace, info, error } from '@tauri-apps/plugin-log';
+import { writeTextFile } from '@tauri-apps/plugin-fs';
+import { dirname } from '@tauri-apps/api/path';
 
 
 
@@ -225,6 +227,34 @@ function App() {
     }
   }, [currentTime, subtitles]); // 依赖于当前播放时间变化
 
+  // 当字幕信息发生变化时,构建并保存SRT文件
+  useEffect(() => {
+    const saveSrtFile = async () => {  // 添加 async 函数
+      if (subtitles.length > 0 && uploadedFilePath) {
+        // 构建SRT内容
+        try {
+          const srtContent = subtitles.map(subtitle => {
+            const startTime = formatSrtTime(subtitle.startSeconds);
+            const endTime = formatSrtTime(subtitle.endSeconds);
+            return `${subtitle.id}\n${startTime} --> ${endTime}\n${subtitle.text}\n`;
+          }).join('\n');
+
+          // 获取视频文件所在目录，并构建srt文件路径
+          const srtPath = uploadedFilePath.replace(/\.[^/.]+$/, '.srt');
+          console.log("srtPath:", srtPath);
+
+          await invoke("write_file", { path: srtPath, content: srtContent });
+          console.log('字幕文件已保存:', srtPath);
+          info('字幕文件已保存:', srtPath);
+        } catch (error) {
+          console.error('保存字幕文件失败:', error);
+          error('保存字幕文件失败:', error);
+        }
+      }
+    };
+
+    saveSrtFile();  // 调用这个 async 函数
+  }, [subtitles]);
 
   // 获取当前活跃的字幕文本
   const activeSubtitle = subtitles[currentSubtitleIndex - 1]?.text || '';
@@ -455,7 +485,7 @@ function App() {
 
       const cost = parseFloat(calculateCost(result.input_tokens, result.output_tokens));
 
-      // 更新本地统计显示
+      // 更新本地统计���示
       setAiStats(prev => ({
         callCount: prev.callCount + 1,
         inputTokens: prev.inputTokens + result.input_tokens,
@@ -776,7 +806,7 @@ function App() {
               console.log('字幕已保存到数据库');
               info('字幕已保存到数据库');
             } catch (error) {
-              console.error('保存字幕信息失败:', error);
+              console.error('保存字��信息失败:', error);
               error('保存字幕信息失败:', error)
               // 这里可以添加一些错误提示，但不影响用户继续使用已生成的字幕
             }
@@ -792,6 +822,16 @@ function App() {
     } finally {
       setIsGeneratingSubtitles(false);
     }
+  };
+
+  // 添加格式化SRT时间的辅助函数
+  const formatSrtTime = (seconds) => {
+    const pad = (num) => num.toString().padStart(2, '0');
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = Math.floor(seconds % 60);
+    const ms = Math.floor((seconds % 1) * 1000);
+    return `${pad(hours)}:${pad(minutes)}:${pad(secs)},${ms.toString().padStart(3, '0')}`;
   };
 
   // 添加处理搜索的函数
@@ -985,7 +1025,7 @@ function App() {
     setShowAboutMenu(false);
   };
 
-  // 添加刷新笔记的函数
+  // 添加刷笔记的函数
   const refreshNotebook = async () => {
     // 检查是否登录
     if (!currentUserId || !token) {
@@ -1203,7 +1243,7 @@ function App() {
                 ) : (
                   <>
                     <i className="fas fa-closed-captioning" />
-                    生成 AI 字幕
+                    生成 AI 字
                   </>
                 )}
               </button>
